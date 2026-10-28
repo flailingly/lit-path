@@ -8,6 +8,7 @@ A personal walking RPG over real San Francisco, built to make post-ACL/meniscus-
 - The owner does not code. Explain steps plainly, run commands for them, and verify changes in the browser before calling them done.
 - Plan before big changes. Keep changes small and testable.
 - Never push walking intensity past physio limits. The game nudges; it never demands.
+- The repo is meant to be public (handle: flailingly). Never commit the owner's real name, personal email, home location, walk history or any keys. Personal places go in `private/`, which git ignores. Mentioning the knee surgery is fine.
 
 ## Files
 
