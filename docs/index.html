@@ -391,18 +391,22 @@ function syncPlan(){const p=S.plan,w=Math.floor((dayIndex()-p.startDay)/7);
 syncPlan();
 
 /* ---------- progression ---------- */
+/* what this outing turned up, for the Camp & Debrief sheet */
+function gotItem(item,o=S.outing){S.satchel[item]=(S.satchel[item]||0)+1;if(o){o.got=o.got||{};o.got[item]=(o.got[item]||0)+1}}
+function noteFind(s){const o=S.outing;if(o)(o.finds=o.finds||[]).push(s)}
+function catOfItem(item){return Object.keys(CATS).find(k=>CATS[k].items.includes(item))||'flora'}
 function addXP(n,label){const b=level();S.xp+=n;const o=S.outing;if(o){o.xp+=n;o.br[label]=(o.br[label]||0)+n}
   const a=level();if(a>b){toast(`Level <em>${a}</em> · ${titleFor(a)}`);chime('level');addLog(`Reached level ${a}: ${titleFor(a)}`);const ch=CHAPTERS.find(c=>c.lvl===a);if(ch)toast(`New chapter: ${ch.t}`)}}
 function quest(type,n){for(const q of S.quests.slice()){if(q.type!==type)continue;q.prog=Math.min(q.target,q.prog+n);
   if(q.prog>=q.target){S.quests=S.quests.filter(x=>x!==q);S.done[q.id]=1;addXP(q.reward,'Errands');toast(`Errand done: ${q.title} <em>+${q.reward}</em>`);chime('quest');addLog(`Finished an errand for ${q.from}: ${q.title}`)}}}
 let foundQueue=[];
-function found(p,xp){S.discovered[p.id]=now();addXP(xp,'Discoveries');bump('found');quest('discover',1);foundQueue.push(label(p));addLog(`Found ${label(p)}${p.kind==='landmark'?' at '+p.name:''}`)}
+function found(p,xp){S.discovered[p.id]=now();addXP(xp,'Discoveries');bump('found');quest('discover',1);foundQueue.push(label(p));noteFind(label(p));addLog(`Found ${label(p)}${p.kind==='landmark'?' at '+p.name:''}`)}
 function discover(q,r,award){const p=poiAt(q,r);if(!p||S.discovered[p.id])return;if(!award){S.discovered[p.id]=now();return}found(p,15)}
 function seeCritter(seedA,seedB,forceNew){let i=Math.floor(hash(seedA,seedB,dayIndex()+50)*CRITTERS.length)%CRITTERS.length;
   if(forceNew){const unseen=CRITTERS.map((c,j)=>j).filter(j=>!S.bestiary[CRITTERS[j][0]]);if(unseen.length)i=unseen[Math.floor(hash(seedA,seedB,9)*unseen.length)]}
   const [n]=CRITTERS[i],seen=S.bestiary[n]||0;S.bestiary[n]=seen+1;
   if(seen){addXP(5,'Bestiary');toast(`A ${n} crossed your path`)}else{addXP(20,'Bestiary');toast(`New in your Bestiary: <em>${n}</em>`);addLog(`First sighting: ${n}`)}chime('find');return n}
-function touch(q,r,award){const k=q+','+r,t=S.cells[k],c=clarity(t);S.cells[k]=now();if(c>=.6)return;
+function touch(q,r,award){const k=q+','+r,t=S.cells[k],c=clarity(t);S.cells[k]=now();if(award&&S.outing&&S.owned[k])(S.outing.walkedOwned=S.outing.walkedOwned||{})[k]=1;if(c>=.6)return;
   if(award){if(!t){addXP(4,'New ground');S.tot.cells++;if(S.outing)S.outing.cells++;bump('cells');quest('uncover',1)}
     else{addXP(c<=0?3:2,'Fog lifted');if(S.outing)S.outing.renew++;bump('renew');quest('renew',1)}
     if(S.outing&&hash(q,r,dayIndex()*7+3)<0.02)seeCritter(q,r)}
@@ -419,6 +423,7 @@ function claim(poly){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const [x,y] of poly){
   const [qa,ra]=toHex(x0,y0),[qb,rb]=toHex(x1,y1);let n=0;
   for(let r=Math.min(ra,rb)-1;r<=Math.max(ra,rb)+1;r++)for(let q=Math.min(qa,qb)-Math.abs(rb-ra)-2;q<=Math.max(qa,qb)+Math.abs(rb-ra)+2;q++){const [cx,cy]=hexCenter(q,r);
     if(cx<x0-R||cx>x1+R||cy<y0-R||cy>y1+R||!inPoly(cx,cy,poly))continue;const k=q+','+r;touch(q,r,true);if(!S.owned[k]){S.owned[k]=dayIndex();n++}}
+  if(n&&S.outing)S.outing.claimed=(S.outing.claimed||0)+n;
   if(n){addXP(Math.min(200,n*5),'Territory');toast(`Territory claimed: <em>${n}</em> hexes are yours`);chime('quest');addLog(`Walked a loop and claimed ${n} hexes`);dirty=true}}
 /* owned ground that's still bright gathers things for you each day */
 function nearestCat(x,y){let best='flora',bd=450;for(const p of LANDMARKS.concat(OSMP)){const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;best=catOf(p)}}return best}
@@ -453,8 +458,13 @@ let dest=null,watchId=null,wake=null,lastFix=null;
 function startOuting(){S.outing={start:now(),m:0,min:0,gain:0,cells:0,renew:0,xp:0,br:{},dAcc:0,tAcc:0,gAcc:0,ref:null,loopFrom:0,trail:[[S.player.x,S.player.y]]};
   today();if(S.mode==='gps')startGPS();try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}
   toast(S.mode==='sim'?'Outing started. Tap the map to walk. Walk a loop to claim what\'s inside.':'Outing started. Walk a loop to claim what\'s inside.');ui();save()}
+/* walking through your own territory turns up a find per 8 hexes, at most 3 a day, so it rewards walking your ground, not walking more */
+function patrolFinds(o){const keys=Object.keys(o.walkedOwned||{});if(!keys.length)return;const td=today(),n=Math.min(3-(td.patrol||0),Math.ceil(keys.length/8));
+  for(let i=0;i<n;i++){const [q,r]=keys[Math.floor(hash(dayIndex(),i+(td.patrol||0),73)*keys.length)].split(',').map(Number),[x,y]=hexCenter(q,r),cat=nearestCat(x,y);gotItem(pick(CATS[cat].items,hash(q,r,dayIndex()+74)),o)}
+  td.patrol=(td.patrol||0)+Math.max(0,n)}
 function endOuting(){const o=S.outing;S.outing=null;dest=null;stopGPS();try{wake&&wake.release()}catch(e){}wake=null;
   if(o.m<15&&o.min<.5){toast('Outing cancelled');ui();save();return}
+  patrolFinds(o);
   const entry={day:dayIndex(),m:o.m,min:o.min,gain:o.gain,cells:o.cells,renew:o.renew,xp:o.xp,pain:null};S.log.unshift(entry);S.log=S.log.slice(0,40);
   addLog(`Walked ${(o.m/1000).toFixed(2)} km in ${Math.round(o.min)} min`);
   syncPlan();ui();save();openSheet(()=>renderSummary(o,entry))}
@@ -512,7 +522,7 @@ function choicesHTML(p){const v=S.visits[p.id],d=dayIndex(),[who]=resident(p),ca
   opts.push(['befriend',`Sit with ${who}`,`Friendship <span class="hearts">${hearts(S.bonds[bondKey(p)]||0)}</span> +1. +10 XP`]);
   return `<h3>Choose one for today</h3><div class="choices">${opts.map(([c,t,s])=>`<button class="choice" data-act="choose" data-id="${p.id}" data-c="${c}"><b>${t}</b><span>${s}</span></button>`).join('')}</div>`}
 function choose(p,c){const v=S.visits[p.id],d=dayIndex();if(!v||v.used===d)return;const [who]=resident(p),key=bondKey(p);let res='';
-  if(c==='forage'){const cat=catOf(p),item=pick(CATS[cat].items,hash(strHash(p.id),d,31));S.satchel[item]=(S.satchel[item]||0)+1;addXP(12,'Gathering');
+  if(c==='forage'){const cat=catOf(p),item=pick(CATS[cat].items,hash(strHash(p.id),d,31));gotItem(item);addXP(12,'Gathering');
     res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>You took <b>${item}</b>. It's in your satchel.</p>`;addLog(`Gathered ${item} at ${label(p)}`)}
   else if(c==='learn'){const i=v.li||0,pool=p.lore||KIND_LORE[p.kind]||[];let line;if(i<pool.length)line=pool[i];else{line=LORE[S.loreIdx%LORE.length];S.loreIdx++}v.li=i+1;
     if(!S.learned.includes(line))S.learned.push(line);addXP(15,'Learning');res=`<p class="lore">${line}</p>`;addLog(`Learned something at ${label(p)}`)}
@@ -521,10 +531,10 @@ function choose(p,c){const v=S.visits[p.id],d=dayIndex();if(!v||v.used===d)retur
   v.used=d;v.result=res;chime('find');save();refreshSheet();ui()}
 function resolveDrift(p){if(p.done)return;const [a,b]=[strHash(p.id),3];let res='';
   if(p.dtype==='shimmer'){const line=LORE[S.loreIdx%LORE.length];S.loreIdx++;if(!S.learned.includes(line))S.learned.push(line);res=`<p>The street goes quiet for a moment, and you understand something.</p><p class="lore">${line}</p>`}
-  else if(p.dtype==='courier'){const cat=pick(Object.keys(CATS),hash(a,b,5)),item=pick(CATS[cat].items,hash(a,b,6));S.satchel[item]=(S.satchel[item]||0)+1;S.bonds.Kip=Math.min(5,(S.bonds.Kip||0)+1);res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>Inside: <b>${item}</b>, and a note in Kip's handwriting: "For the Scout. Don't ask."</p>`}
+  else if(p.dtype==='courier'){const cat=pick(Object.keys(CATS),hash(a,b,5)),item=pick(CATS[cat].items,hash(a,b,6));gotItem(item);S.bonds.Kip=Math.min(5,(S.bonds.Kip||0)+1);res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>Inside: <b>${item}</b>, and a note in Kip's handwriting: "For the Scout. Don't ask."</p>`}
   else if(p.dtype==='familiar'){const n=seeCritter(a,b,true);res=`<p>A <b>${n}</b> lets you look at it for a long moment before it goes. It's in your Bestiary.</p>`}
   else{const [n,role,line]=pick(CAST,hash(a,b,7));S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1);res=`<div class="npc"><b>${n}, ${role}</b><p>${line}</p></div>`}
-  p.done=1;p.result=res;addXP(25,'Drifts');addLog(`Followed a drift: ${p.name}`);chime('find');save();refreshSheet();ui()}
+  p.done=1;p.result=res;noteFind(p.name);addXP(25,'Drifts');addLog(`Followed a drift: ${p.name}`);chime('find');save();refreshSheet();ui()}
 function renderPOI(p,fresh){const d=dayIndex(),[who,role]=resident(p),bond=S.bonds[bondKey(p)]||0,first=fresh&&p.kind!=='hearth'?` · first visit +${p.kind==='landmark'?25:10} XP`:'';
   const npc=line=>`<div class="npc"><b>${who}, ${role} <span class="hearts">${hearts(bond)}</span></b><p>${line}</p></div>`;
   if(p.kind==='hearth'){const ch=CHAPTERS.filter(c=>level()>=c.lvl).pop(),owned=Object.keys(S.owned).length;
@@ -557,9 +567,27 @@ function renderIntro(){return `<div class="eyebrow">The Wayfarer's Guild · Chap
   <div class="row"><button class="btn solid" data-act="begin" data-mode="gps">Use my location as home</button><button class="btn" data-act="begin" data-mode="sim">Try it with simulated walking</button></div>
   <p class="note">"Use my location" sets home where you're standing and tracks your real walks. Simulated walking starts you in the Mission: tap the map to walk at ${S.simSpeed}× speed. You can move home later in Dispatch.</p>`}
 
-function renderSummary(o,entry){const br=Object.entries(o.br).sort((a,b)=>b[1]-a[1]);
-  return `<div class="eyebrow">Back home</div><h2>Outing complete</h2>
+/* Camp & Debrief: one small either/or after every outing. [label, hint, reward, result]; reward is bond:Name, item, item:cat or xp */
+const CAMP=[
+  [['Write the report for Maren','She reads every one, even the short ones.','bond:Maren','Maren writes back on the same page: "Got it. Old ground counts, and so does this."'],
+   ['Sketch one street from memory','Professor Val keeps a drawer of Scout sketches.','bond:Professor Val','Val returns it with one note in the margin: "Your corners are crooked. The archive prefers them that way."']],
+  [['Empty your satchel on the table','Sort the day before it blurs together.','item','Tucked in a side pocket is something you don\'t remember picking up.'],
+   ['Feed Bramble','Bramble has opinions about long walks.','bond:Bramble','Bramble eats, then sits squarely on your map. That counts as approval.']],
+  [['Put your feet up','Oriel\'s standing advice: rest is part of the route.','bond:Oriel','Oriel passes the window and nods. "Good. Same again tomorrow, or less. Both count."'],
+   ['Leave a note for Kip','The magpie collects before morning.','bond:Kip','By dark the note is gone. In its place is a brass washer, polished.']],
+  [['Mark where the fog was thickest','The Guild tracks where Karl lingers.','xp','You shade three corners of the map. Tomorrow you\'ll know where the Fading is patient.'],
+   ['Tell a Hearthkeeper about your route','Café gossip travels faster than couriers.','item:snacks','The barista listens, then slides something across the counter. "For the next one."']]];
+function campPair(entry){return Math.floor(hash(entry.day,S.log.length,81)*CAMP.length)%CAMP.length}
+function campChoose(i,c){const e=S.log[0];if(!e||e.camp)return;const [,,rw,line]=CAMP[i][c];let extra='';
+  if(rw.startsWith('bond:')){const n=rw.slice(5);S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1)}
+  else if(rw.startsWith('item')){const cat=rw.split(':')[1]||pick(Object.keys(CATS),hash(e.day,S.log.length,82)),item=pick(CATS[cat].items,hash(e.day,S.log.length,83));gotItem(item,null);extra=` <b>${item}</b> goes in your satchel.`}
+  addXP(15,'Camp');e.camp=`<p class="lore">${line}</p><p class="muted">+15 XP.${extra}</p>`;addLog(CAMP[i][c][0]);chime('find');save();refreshSheet();ui()}
+function renderSummary(o,entry){const br=Object.entries(o.br).sort((a,b)=>b[1]-a[1]),got=Object.entries(o.got||{}),finds=o.finds||[],ci=campPair(entry);
+  const foundHTML=[...finds.map(f=>`<div><span>${f}</span><span>found</span></div>`),...got.map(([k,v])=>`<div><span><span class="dot" style="background:${CATS[catOfItem(k)].color}"></span>${k}</span><span>×${v}</span></div>`),...(o.claimed?[`<div><span>Territory claimed</span><span>${o.claimed} hexes</span></div>`]:[])].join('');
+  return `<div class="eyebrow">Back home</div><h2>Camp &amp; Debrief</h2>
   <div class="big"><div><b>${(o.m/1000).toFixed(2)}</b><span>kilometres</span></div><div><b>${Math.round(o.min)}</b><span>minutes on foot</span></div><div><b>${Math.round(o.gain)}</b><span>metres climbed</span></div><div><b>${o.cells}</b><span>new hexes · ${o.renew} cleared again</span></div></div>
+  <h3>Found on the way</h3>${foundHTML?`<div class="lines">${foundHTML}</div>`:'<p class="muted">Nothing this time. Walking through ground you\'ve claimed turns things up.</p>'}
+  <h3>Before you rest</h3>${entry.camp||`<div class="choices">${CAMP[ci].map((c,j)=>`<button class="choice" data-act="camp" data-i="${ci}" data-c="${j}"><b>${c[0]}</b><span>${c[1]}</span></button>`).join('')}</div>`}
   <h3>Experience · ${o.xp} XP</h3><div class="lines">${br.map(([k,v])=>`<div><span>${k}</span><span>+${v}</span></div>`).join('')||'<div><span>Nothing yet</span><span>0</span></div>'}</div>
   <h3>Knee check-in</h3>
   <div id="checkin">${entry.pain==null?`<p class="muted">How does the knee feel right now? Oriel uses this to decide whether next week's goal grows or holds.</p>
@@ -641,6 +669,7 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-act],[dat
   if(act==='accept'){const q=offers.get(el.dataset.id);if(q&&S.quests.length<4&&!S.quests.some(x=>x.id===q.id)){S.quests.push({...q});toast(`Errand accepted: ${q.title}`);save();refreshSheet()}return}
   if(act==='choose'){const p=placeById(el.dataset.id);if(p)choose(p,el.dataset.c);return}
   if(act==='drift'){const p=placeById(el.dataset.id);if(p)resolveDrift(p);return}
+  if(act==='camp'){campChoose(+el.dataset.i,+el.dataset.c);return}
   if(act==='pain'){const val=+$('painIn').value,e0=S.log[0];if(e0){e0.pain=val}const td=today();td.pain=Math.max(td.pain==null?0:td.pain,val);S.lastPain=val;save();refreshSheet()}
   if(act==='rest'){const td=today();if(!td.rest&&td.min<3){td.rest=true;addXP(20,'Rest');toast('A rest day at home. Streak kept.');addLog('Took a rest day');save();refreshSheet();ui()}}
   if(act==='skip'){S.timeOffset+=DAY*(+el.dataset.n);syncPlan();dailyYield();ensureDrifts();toast(`${el.dataset.n} day${el.dataset.n>1?'s':''} pass. The fog settles over quiet streets.`);dirty=true;save();refreshSheet();ui()}
