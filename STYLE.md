@@ -46,6 +46,8 @@ Pickup colors: Flora `#7d9a5a`, Provisions `#d9a43a`, Knowledge `#5d6fa8`, Sea f
 - **Don't:** talking objects as mascots ("Graffito, a chatty paint can"), cutesy names, exclamation points, "magical!", baby talk.
 - **Don't:** grimdark. Nothing is dying, cursed or at war. The Fading is quiet, not evil.
 
+**Start from something real.** Magic is what the hidden city does to an ordinary thing, never a thing from nowhere. You gather eucalyptus, but it's Misted Eucalyptus, beaded by the fog. A trolley wire hums with the Ley-Grid. A bakery is a real bakery on a real corner, under a Guild name, kept by someone you get to know.
+
 **Every place gets one real fact and one uncanny line.** Double-check real facts. The uncanny line should be specific and small.
 
 **Recovery is part of life, not the plot.** The game knows about the knee (Oriel the physio, rest days, check-ins) and is kind about it. It never guilts, never says "push through", and treats rest as a valid move.

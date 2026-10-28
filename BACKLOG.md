@@ -38,6 +38,15 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 - [ ] **More than one camp choice, tied to what you met on the walk.** Today Camp & Debrief offers one generic A/B pair. Owner wants a choice for each notable thing met on the way (a place visited, a drift, a person), using its name and kind. Suggested: up to 3 per debrief, built from per-kind templates (grove, mural, archive, Hearthkeeper, lookout, spring, echo, drift types, story landmarks). The template text goes to the content session.
 - [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said). Partly done: the Journal now lists past check-ins with Oriel's replies. Still open: some way to interact with her.
 
+## Heart pass (owner, 2026-10-28)
+
+The owner feels the game is missing heart and wants more story. Three linked ideas, plus a sorted copy of the Gemini codex in `private/gemini-codex-notes.md` (keep, fix, leave out):
+
+- [ ] **Ingredients start from real forage.** Every pickup is a real thing you could find in SF, changed a little by the hidden city: "Misted Eucalyptus" (touched by the fog), "Ley-Warmed Fennel", "Lamplit Sourgrass". Each gets a one-line field-guide note: one real fact and one uncanny line. Content: rename the item lists in `CATS` and write the notes. Logic: renaming breaks items already in the owner's satchel, so it needs a small old-name → new-name migration; places should also give the ingredient that actually grows there (eucalyptus from groves full of eucalyptus) rather than any random flora.
+- [ ] **Named Hearthkeepers at real shops.** Hand-written waystations at real cafés and bakeries, with a made-up shop name and keeper. Example: the bakery at 18th & Guerrero becomes "The Proving House" run by Saffron, without using the real bakery's name. Each one has a keeper, a signature ingredient and a few lines. Mostly content; it fits the existing landmark format. Spread them across the city so the set doesn't point at the owner's home.
+- [ ] **People you've met turn up elsewhere.** Once you've befriended a keeper (2 hearts, say), they can appear as a "Familiar Face" drift anywhere in town: Saffron on a bench in Duboce Park with a bag of flour, Gus off shift at Ocean Beach. Each gets 3 or 4 roaming lines and may hand over their signature ingredient. Logic: the wanderer drift picks from befriended residents instead of only the core cast. Content: the roaming lines.
+- [ ] Suggested first slice: one keeper end to end (Saffron's bakery, her ingredient, her roaming lines) to check that it feels right on a real walk, then scale up.
+
 ## From the owner's field guide prototype (2026-10-28)
 
 The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City Field Guide" (kept outside the repo). Much of it is mocked up with fixed text, but these ideas are worth bringing into this game:
