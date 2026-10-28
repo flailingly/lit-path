@@ -35,6 +35,9 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 ## Asked for in walk reports
 
+- [ ] **Reorganize the screens (owner, 2026-10-28).** Three linked complaints: (1) Dispatch is mostly settings and save data, which doesn't belong in the main play area; move settings and saves behind a small gear at the top. (2) The groupings feel arbitrary: Satchel is bundled with Stats while Logbook is bundled with Bestiary. The field guide prototype grouped things more deliberately. (3) The level badge and goal ring at the top open the same sheets as the Satchel and Dispatch buttons (`lvlBtn` → `renderSatchel`, `goalBtn` → `renderPlan`). Every control should lead somewhere different. Proposed layout is waiting on the owner's decision.
+- [ ] **More than one camp choice, tied to what you met on the walk.** Today Camp & Debrief offers one generic A/B pair. Owner wants a choice for each notable thing met on the way (a place visited, a drift, a person), using its name and kind. Suggested: up to 3 per debrief, built from per-kind templates (grove, mural, archive, Hearthkeeper, lookout, spring, echo, drift types, story landmarks). The template text goes to the content session.
+- [ ] **Map is too busy: drop house numbers, keep street names.** House numbers (for example "3471...3475") show because the map loads the most detailed tile level (zoom 17–18 of tile.openstreetmap.org), which is the only level that has them. Option A: cap tiles at zoom 16. House numbers disappear and street names stay, but the map gets chunkier and labels get smaller. Option B: switch to a cleaner tile style that leaves out house numbers (check the provider's terms first). Try A first, since it's one number to change.
 - [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said).
 
 ## From the owner's field guide prototype (2026-10-28)
