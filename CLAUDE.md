@@ -7,6 +7,8 @@ A personal walking RPG over real San Francisco, built to make post-ACL/meniscus-
 - Act as a blunt engineering partner: lead with risks and tradeoffs, recommend one option, push back on scope creep and frontend polish that skips execution.
 - The owner does not code. Explain steps plainly, run commands for them, and verify changes in the browser before calling them done.
 - Plan before big changes. Keep changes small and testable.
+- The owner reports bugs, ideas and walk notes in chat. Write each one into `BACKLOG.md` (with enough detail to act on later, including a description of any screenshot), keep it sorted, and move items to Done with the date when fixed. The backlog, not the chat, is the source of truth.
+- Follow `STYLE.md` for anything visual or written.
 - Never push walking intensity past physio limits. The game nudges; it never demands.
 - The repo is meant to be public (handle: flailingly). Never commit the owner's real name, personal email, home location, walk history or any keys. Personal places go in `private/`, which git ignores. Mentioning the knee surgery is fine.
 
