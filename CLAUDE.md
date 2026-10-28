@@ -28,6 +28,8 @@ Test in the browser pane at mobile size (375x812). Simulated walking: start with
 
 Deploy: the owner drags `lamplighter-phone/` onto their Netlify project's Deploys page (Netlify Drop). URL stays the same.
 
+Preview: `lamplighter.html` is also published as a claude.ai artifact at https://claude.ai/artifact/G2DMEZLacrttTTSs8fcKx2. Update it in place (pass that `url`, and `places.json` in `files`) rather than creating a new artifact. In the artifact viewer, map tiles and GPS are blocked, so it falls back to drawn terrain and simulated walking.
+
 ## Architecture (inside the script)
 
 - World frame: real SF in metres, origin (0,0) near 18th & Guerrero (`ORIGIN`, `ll2w`, `w2ll`).
