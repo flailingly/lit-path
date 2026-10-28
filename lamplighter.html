@@ -191,7 +191,7 @@ details p{margin-top:8px}
 (()=>{
 const cv=document.getElementById('map'),ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
-const SQ3=Math.sqrt(3),R=26,DAY=864e5,REVEAL=70,RANGE=48,WALK=1.4,WATER=0.28;
+const SQ3=Math.sqrt(3),R=26,DAY=864e5,REVEAL=70,RANGE=48,DRIFT_PICKUP=60,WALK=1.4,WATER=0.28;
 const CLEAR_DAYS=3,FADE_DAYS=11,LS='lamplighter-v1',RAD=Math.PI/180;
 /* the world is real San Francisco: (0,0) sits near 18th & Guerrero, 1 unit = 1 metre */
 const ORIGIN={lat:37.7625,lon:-122.4235};
@@ -682,10 +682,14 @@ function hexPath(sx,sy,s){ctx.beginPath();for(let i=0;i<6;i++){const x=sx+CORN[i
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* fog: a chunky low-res layer of real-looking fog, with soft holes where you've walked */
-const soft=document.createElement('canvas');soft.width=soft.height=64;{const g=soft.getContext('2d'),gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}
-const noise=document.createElement('canvas');noise.width=noise.height=64;{const g=noise.getContext('2d'),im=g.createImageData(64,64);
+/* Android Chrome can blank these off-screen canvases while the page is hidden, which leaves the whole map fogged, so they are rebuilt on return */
+let soft,noise,noisePat=null;
+function makeFogBrushes(){soft=document.createElement('canvas');soft.width=soft.height=64;{const g=soft.getContext('2d'),gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}
+  noise=document.createElement('canvas');noise.width=noise.height=64;{const g=noise.getContext('2d'),im=g.createImageData(64,64);
   for(let y=0;y<64;y++)for(let x=0;x<64;x++){const v=vnoise(x/16,y/16,91,4)*.65+vnoise(x/8,y/8,92,8)*.35,i=(y*64+x)*4;im.data[i]=im.data[i+1]=im.data[i+2]=v>.5?255:150;im.data[i+3]=Math.round(Math.abs(v-.5)*2*255)}g.putImageData(im,0,0)}
-let noisePat=null;
+  noisePat=null;dirty=true}
+makeFogBrushes();
+cv.addEventListener('contextrestored',makeFogBrushes);
 function drawFog(t){const fw=fogC.width,fh=fogC.height,f=fctx;f.globalCompositeOperation='source-over';f.clearRect(0,0,fw,fh);
   f.fillStyle='rgba(222,227,231,.93)';f.fillRect(0,0,fw,fh);
   noisePat=noisePat||f.createPattern(noise,'repeat');
@@ -797,12 +801,14 @@ function frame(t){const dt=Math.min(100,t-last);last=t;
   draw(t);
   if(t-uiT>250){uiT=t;checkDaily();ensureDrifts();ui();
     if(foundQueue.length){toast(foundQueue.length===1?`Found <em>${foundQueue[0]}</em>`:`Found ${foundQueue.length} places: <em>${foundQueue.slice(0,3).join(', ')}${foundQueue.length>3?'…':''}</em>`);chime('find');foundQueue=[]}
+    for(const d of S.drifts||[])if(!d.done&&Math.hypot(d.x-S.player.x,d.y-S.player.y)<=DRIFT_PICKUP){resolveDrift(d);toast(`Collected <em>${d.name}</em> as you passed. +25 XP.`)}
     const n=findNear();if(n!==nearPOI){nearPOI=n;$('interact').hidden=!n;if(n)$('interactBtn').textContent=n.kind==='drift'?`Investigate: ${n.name}`:`Visit ${label(n)}`}
     if(t-osmT>5000){osmT=t;dailyYield()}
     if(t-saveT>3000){saveT=t;save()}}
   requestAnimationFrame(frame)}
-document.addEventListener('visibilitychange',()=>{if(document.hidden)save();
-  else if(S.outing){try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){save();return}
+  makeFogBrushes();
+  if(S.outing){try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}}});
 
 ensureDrifts();ui();
 if(S.intro)openSheet(renderIntro);

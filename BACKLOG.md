@@ -15,7 +15,6 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 ## Knee safety
 
-- [ ] Missing a drift tempts a detour. On walk 1 the owner walked past a Shimmer and a Familiar, did not get them, and thought about looping back. Drifts should be collected when you pass them (see Bugs) so nobody adds distance to chase one.
 
 - [ ] XP has no ceiling past the daily goal, so the game rewards overdoing it. Add diminishing returns past about 1.5x the goal.
 - [ ] Hills and stairs (climb errands, Track-Keeper readings, the High Ground chapter) should unlock only when the owner says their physio has cleared them, not by level alone.
@@ -23,8 +22,6 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 ## Bugs and known weak spots
 
-- [ ] **The map goes back to full fog after the screen is turned off and on (walk 1).** Screenshot: right after getting home, the whole map was grey fog, including the loop just walked and the clear circle that should always surround the Scout. Only the drift labels, Home and You showed through. The walk was still saved: the Satchel still said 22 hexes held and 22 clear. Likely cause: when Chrome on Android puts the page in the background, it can wipe canvases that were drawn ahead of time, and the fog uses two of these (the soft round "brush" that cuts holes and the fog texture). With the brush blank, nothing gets cut out. Fix: redraw both when the page comes back (`visibilitychange` / `contextrestored`). Workaround until then: reload the page.
-- [ ] **Walking past a drift does not collect it.** Today you must be within 48 m of the drift *and* tap the "Investigate" button that appears at the bottom of the screen. The owner walked a loop past the Shimmer and the Familiar, expected passing by to count, and got neither. Fix: collect automatically within about 60 m (GPS error downtown is 10 to 30 m) and show what you got in the end-of-walk summary. Keep the button for when you are standing still.
 - [ ] **Drifts can land inside buildings.** They are placed at a random angle and distance from home, so one Shimmer sat inside a house, about 30 to 40 m off the street. Fix: move each drift to the nearest point on a street or path, or onto a real public place.
 - [ ] **The Guild board can offer the same errand twice.** Screenshot: Home showed "Survey the edges: Ink 18 hexes nobody in the Guild has mapped yet. +46 XP" twice, one accepted and one not. `makeOffers` picks each of its two errands separately and doesn't check for repeats. Fix: never offer the same errand type twice.
 - [ ] **Walk time reads low.** The owner was out about 20 minutes; the game counted 13. The shop stop is left out on purpose (time only counts while moving), but a gap of more than 30 s between GPS fixes also counts as zero time, and phones often space fixes out. Check against the next walk; consider showing both "time out" and "time moving".
@@ -66,3 +63,5 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 - 2026-10-28: Real pixelated SF map, real-looking fog, loop capture and territory, daily drifts, 2,189 OpenStreetMap places, Wayfarer's Guild setting and cast.
 - 2026-10-28: Project moved into git, published at https://github.com/flailingly/lit-path, live on GitHub Pages.
+- 2026-10-28: Fog no longer goes fully grey after the screen is turned off and on: the fog brushes are rebuilt whenever the page comes back (walk 1). Tested by firing the resume events in the browser; still needs a real phone check.
+- 2026-10-28: Drifts are collected automatically within 60 m, with a "+25 XP" toast, so there's no reason to double back for one (walk 1). The Investigate button still works for reading them.
