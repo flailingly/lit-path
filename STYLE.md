@@ -12,7 +12,9 @@ A real map of San Francisco with a quiet magical city showing through the fog: g
 - **The fog looks like fog.** Grey-white, drifting, pixelated, soft-edged. Walking into it clears it; it creeps back over days. Never a flat color or a hatch pattern.
 - **Pixel art, point-and-click era.** Think LucasArts adventure games: small detailed sprites, hard 1-pixel drop shadows, square corners. Sprites are 9x9 (places) or 8x12 (the Scout) at 2 to 3 px per pixel.
 - **Dialogue boxes are dark.** Toasts, the Visit button and map labels use dark navy boxes (`#1d1a2b`) with paper or gold pixel text.
-- **The Folio pages are parchment.** Sheets (Dispatch, Logbook, Satchel) are warm paper with ink text, so the map is the world and the sheets are your notebook.
+- **The Folio's cover is leather.** The top bar and the bottom buttons are dark leather with a thin brass-gold trim, like the binding of a field guide. The map sits inside that frame.
+- **The Folio pages are parchment.** Sheets (Dispatch, Logbook, Satchel, Camp & Debrief) are warm paper with ink text and a gold top edge, so the map is the world and the sheets are your notebook.
+- **No emoji.** They look different on every phone and fight the sprites. Use small pixel icons instead.
 
 ### Palette
 
@@ -24,13 +26,15 @@ A real map of San Francisco with a quiet magical city showing through the fog: g
 | Gold (XP, highlights, drifts) | `#d9a43a` / `#ffd76a` |
 | Fog | `#dee3e7` |
 | Dialogue box | `#1d1a2b` |
+| Leather (cover: top bar, bottom buttons) | `#2a170c` / `#452714` |
+| Brass trim (cover edges, borders on dark) | `#c99a3e`, text on leather `#f5deb0` |
 
 Pickup colors: Flora `#7d9a5a`, Provisions `#d9a43a`, Knowledge `#5d6fa8`, Sea finds `#4f8fa0`, Sky finds `#8fa9c4`, Pigment `#c0607a`.
 
 ### Type
 
-- **Pixelify Sans** for headings, buttons, numbers and map labels.
-- **IM Fell English** for spoken lines and lore: anything a character says or the city remembers.
+- **IM Fell English** for headings (sheet titles, section titles, the Folio's name) and for spoken lines and lore: anything a character says or the city remembers.
+- **Pixelify Sans** for buttons, numbers, map labels and collection messages ("Collected A Shimmer. +25 XP"), so game feedback reads at a glance.
 - **Atkinson Hyperlegible** for everything you need to read quickly, like instructions, settings and stats.
 
 ## Voice

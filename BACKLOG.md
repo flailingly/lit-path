@@ -15,7 +15,6 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 ## Knee safety
 
-
 - [ ] XP has no ceiling past the daily goal, so the game rewards overdoing it. Add diminishing returns past about 1.5x the goal.
 - [ ] Hills and stairs (climb errands, Track-Keeper readings, the High Ground chapter) should unlock only when the owner says their physio has cleared them, not by level alone.
 - [ ] Walking while looking at the screen is a trip hazard. Long-term fix is the native app (pocket the phone, buzz when something is near). Short-term, keep on-screen actions to "do it when you get home".
@@ -39,6 +38,16 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 - [ ] **End-of-walk summary: "here's what you collected."** Today territory yields items once a day as an overnight toast (`dailyYield`), and nothing sums up the walk itself. Owner wants every owned area to gather something while you walk through it, and a short, satisfying recap when you end the outing (distance, time, hexes, drifts, items). The summary is the most important part; build it first.
 - [ ] **Every walk should include at least one choice or interaction**, even if it isn't main story. Ideas: a drift that is always placed on today's likely route, or a small either/or at the end-of-walk summary. Game logic goes here; the writing goes to the content session.
 - [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said).
+
+The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City Field Guide" (kept outside the repo). Much of it is mocked up with fixed text, but these ideas are worth bringing into this game:
+
+- [ ] **Restyle to the hybrid look:** leather and brass frame, serif headings, pixel map and collection messages. See STYLE.md.
+- [ ] **Camp & Debrief** (this is the end-of-walk summary above): ending an outing opens a parchment sheet tallying distance, time, new hexes, drifts and items from the walk, then one A/B choice.
+- [ ] **Named districts with "% surveyed"**: explore 50% of a named area to claim it, with no loop needed. Use real SF neighborhood boundaries (not drawn rectangles) so it works anywhere. Keep the hex loops as well.
+- [ ] **District dossiers and ledger**: tap a district to see its lore, elevation and progress; a list shows every district. Lore writing goes to the content session.
+- [ ] **Log a rest day** that keeps the streak, plus a 7-day table (distance, climb, territory, status) in the Logbook.
+- [ ] **Progress clocks on encounters**: small boxes that fill over several visits, so places and people build up over time.
+- Left out on purpose: a daily distance target that rises on its own (the game must not set rehab pace), items with fake medical effects (poultices, "+20% knee cushion"), step-rate targets, borrowed names ("Marauder's Map", "Hitchhiker's Guide"), test controls on the main screen, and switching to Leaflet and Tailwind.
 
 ## Content
 
