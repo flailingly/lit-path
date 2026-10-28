@@ -49,7 +49,6 @@ The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City F
 
 ## Content
 
-- [ ] Write more Camp & Debrief choice pairs. There are only 4 (`CAMP` in `lamplighter.html`), so they will repeat within a week. Each pair is two short options plus a one-line result in a character's voice; rewards are a friendship, an item or XP.
 - [ ] Sync the landmark sheet into the game whenever the owner adds a batch: https://claude.ai/artifact/7cx9oVbZkZz15d2m1UHoBY
 - [ ] Personal places (home block, favorite bench) go in `private/`, which never reaches GitHub.
 - [ ] Each place offers only 2 lore lines, so repeat visits will start to repeat. Write more lines, prioritizing the places the owner actually walks past.
@@ -77,3 +76,4 @@ The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City F
 - 2026-10-28: Camp & Debrief: ending an outing lists the places, drifts and items found, territory claimed, then one either/or choice (+15 XP and a friendship or item). Walking through your own territory turns up 1 find per 8 hexes, at most 3 a day. Tested with simulated walking.
 - 2026-10-28: Screens reorganized so every control leads somewhere different. Bottom: Today (Maren's dispatch, drifts, errands, rest day), Journal (week strip, recent walks, Oriel check-in history, story, log), Set out, Satchel (items only), Guide (places, territory, people, Bestiary, lore). Top: level badge opens the Scout record (stats), the goal ring is a gauge only, and a gear opens Settings and saves.
 - 2026-10-28: Map is quieter: tiles capped at zoom 16, so house numbers are gone and street names stay (bigger and chunkier when zoomed in). Business and building labels mostly drop out too.
+- 2026-10-28: Camp & Debrief has 12 choice pairs instead of 4 (more rest options with Oriel, plus Maren, Val, Kip, Bramble, finds and XP), so a pair repeats about every two weeks. Tested with simulated walking.
