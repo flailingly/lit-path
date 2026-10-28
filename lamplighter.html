@@ -1,0 +1,812 @@
+<title>Scout's Folio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IM+Fell+English:ital@0;1&family=Pixelify+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: a parchment field map (Marauder's-map style) fills the screen; the HUD is a strip of the Folio's cover, sheets are its pages */
+:root{
+  --bg:#e9dcbc; --fog:#cfba8e; --panel:#f6ecd4; --panel-2:#eadbb8; --line:#c8b083; --paper:#f6ecd4;
+  --ink:#3b2a1a; --muted:#6f5a3e; --lantern:#8f5c12; --gold:#d9a43a; --seal:#a63d2f; --ember:#c0703a; --moss:#5f7d3c;
+  --good:#4f7f2e; --warn:#a8741a; --bad:#a63d2f;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --hand:"IM Fell English","Iowan Old Style",Georgia,serif;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Pixelify Sans",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);overflow:hidden;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));-webkit-tap-highlight-color:transparent}
+#map{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block;cursor:crosshair}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--lantern);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.hud{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;gap:12px;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) 18px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(233,220,188,.97) 55%,rgba(233,220,188,0));pointer-events:none}
+.hud>*{pointer-events:auto}
+.lvl{flex:none;width:50px;height:50px;border-radius:50%;border:2px solid #7d2a20;background:radial-gradient(circle at 40% 35%,#c4554a,var(--seal) 70%);display:grid;place-items:center;font:600 22px/1 var(--display);color:var(--paper);box-shadow:0 2px 0 rgba(59,42,26,.25)}
+.xpwrap{flex:1;min-width:0}
+.xprow{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+#title{font:600 17px/1.1 var(--display);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#xpText{font-size:11px;color:var(--muted);white-space:nowrap}
+.bar{height:6px;border-radius:3px;background:var(--panel-2);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ember),var(--lantern));transition:width .4s}
+.goal{flex:none;position:relative;width:52px;height:52px;background:none;border:0;padding:0}
+.goal svg{width:52px;height:52px;transform:rotate(-90deg)}
+.goal>span{position:absolute;inset:0;display:grid;place-items:center;font:600 12px/1 var(--mono);text-align:center}
+.goal small{display:block;font:9px/1 var(--body);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+
+.stats{position:fixed;z-index:4;top:calc(env(safe-area-inset-top,0px) + 80px);left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.chip{background:rgba(246,236,212,.94);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px}
+.chip b{font:600 13px var(--mono);color:var(--lantern);font-variant-numeric:tabular-nums}
+.chip.sim{color:var(--muted)}
+
+.mapctl{position:fixed;z-index:4;right:max(16px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 124px);display:flex;flex-direction:column;gap:6px}
+.mapctl button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:rgba(246,236,212,.94);font-size:20px;line-height:1;display:grid;place-items:center}
+
+.toasts{position:fixed;z-index:20;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 168px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;padding:0 16px}
+.toast{background:var(--panel);border:1px solid var(--lantern);color:var(--ink);border-radius:10px;padding:8px 14px;font-size:14px;box-shadow:0 6px 20px rgba(59,42,26,.25);animation:tin .25s ease-out;max-width:340px;text-align:center}
+.toast em{font-style:normal;color:var(--seal);font-family:var(--mono)}
+@keyframes tin{from{transform:translateY(-6px);opacity:.3}}
+
+.attrib{position:fixed;z-index:5;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 78px);font-size:10px;color:var(--muted);background:rgba(246,236,212,.85);padding:2px 6px;border-radius:4px}
+.attrib a{color:inherit}
+.interact{position:fixed;z-index:6;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);display:flex;justify-content:center;pointer-events:none;padding:0 16px}
+.interact button{pointer-events:auto;background:var(--panel);border:1.5px solid var(--seal);border-radius:999px;padding:10px 20px;font-weight:700;box-shadow:0 0 0 6px rgba(166,61,47,.12),0 8px 24px rgba(59,42,26,.25)}
+
+.dock{position:fixed;z-index:6;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;padding:12px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 14px) max(16px,env(safe-area-inset-left,0px));background:linear-gradient(rgba(233,220,188,0),rgba(233,220,188,.97) 45%)}
+.dock button{flex:1;min-width:0;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font:600 14px var(--display);box-shadow:0 2px 0 rgba(59,42,26,.18)}
+.dock .go{flex:1.6;background:var(--seal);color:var(--paper);border-color:#7d2a20;font-size:16px}
+.dock .go.on{background:var(--panel);color:var(--seal);border-color:var(--seal)}
+
+.sheet{position:fixed;z-index:10;left:0;right:0;bottom:0;max-height:82%;overflow:auto;background:radial-gradient(ellipse at 50% 0%,var(--panel) 55%,var(--panel-2));border-top:2px solid var(--line);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(59,42,26,.25);padding:8px max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 24px) max(18px,env(safe-area-inset-left,0px));animation:sup .22s ease-out}
+@keyframes sup{from{transform:translateY(24px);opacity:.4}}
+.sheet-in{max-width:560px;margin:0 auto}
+.grab{display:flex;justify-content:flex-end;position:sticky;top:-8px;padding-top:8px;z-index:1}
+.close{border:1px solid var(--line);background:var(--panel-2);border-radius:999px;padding:4px 12px;font-size:13px}
+.sheet h2{font:600 26px/1.15 var(--display);margin:0 0 4px;text-wrap:balance}
+.sheet h3{font:13px/1 var(--body);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:22px 0 10px}
+.sheet p{margin:0 0 10px;max-width:62ch}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--lantern);margin-bottom:2px}
+.muted{color:var(--muted)}
+.npc{border-left:2px solid var(--lantern);padding:2px 0 2px 12px;margin:14px 0}
+.npc{border-left-color:var(--seal)}
+.npc b{display:block;font-family:var(--hand);font-size:19px;font-weight:400;color:var(--seal)}
+.npc p{font:italic 17px/1.4 var(--hand)}
+.choices{display:grid;gap:8px}
+.choice{text-align:left;background:var(--panel-2);border:1.5px solid var(--ink);border-radius:10px;padding:10px 12px;display:grid;gap:3px;box-shadow:0 2px 0 rgba(59,42,26,.3)}
+.choice b{font:600 15px var(--display)}
+.choice span{font-size:13px;color:var(--muted)}
+.choice:active{transform:translateY(1px);box-shadow:none}
+.hearts{color:var(--seal);letter-spacing:1px;font-family:var(--body);font-weight:400}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;border:1px solid var(--ink)}
+.dex{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.dex>div{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;min-width:0}
+.dex b{display:block;font:600 14px var(--display);margin-bottom:2px}
+.dex .unk{color:var(--muted);border-style:dashed}
+.lines div span:first-child{min-width:0}
+.qcard{grid-template-columns:40px minmax(0,1fr);column-gap:12px;align-items:start}
+.qcard .clock{grid-row:span 4}
+.qcard>*:not(.clock){grid-column:2}
+textarea{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;color:var(--ink);word-break:break-all}
+.card{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:6px;margin-bottom:10px}
+.card .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.card .top b{font-size:15px}
+.card .xp{font:12px var(--mono);color:var(--lantern);white-space:nowrap}
+.card .from{font-size:12px;color:var(--muted)}
+.btn{border:1px solid var(--lantern);background:transparent;color:var(--lantern);border-radius:10px;padding:9px 14px;font-weight:700}
+.btn.solid{background:var(--lantern);color:var(--paper)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.big div{background:var(--panel-2);border-radius:12px;padding:10px 12px}
+.big b{display:block;font:600 24px/1.1 var(--mono);color:var(--lantern);font-variant-numeric:tabular-nums}
+.big span{font-size:12px;color:var(--muted)}
+.lines{display:grid;gap:4px;margin:6px 0 4px;font-size:14px}
+.lines div{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:3px 0}
+.lines div span:last-child{font-family:var(--mono);color:var(--lantern)}
+.attr{display:grid;grid-template-columns:7.5em 2.2em 1fr;gap:10px;align-items:center;margin:8px 0}
+.attr b{font-family:var(--hand);font-size:18px;font-weight:400}
+.attr .r{font:600 16px var(--mono);color:var(--lantern);text-align:right}
+.attr small{grid-column:3;color:var(--muted);font-size:12px;margin-top:-6px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0}
+.week div{text-align:center;font-size:11px;color:var(--muted)}
+.week i{display:block;height:34px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);margin-bottom:4px;font:600 11px/34px var(--mono);font-style:normal;color:var(--ink)}
+.week i.walk{background:rgba(217,164,58,.35);border-color:var(--gold)}
+.week i.rest{background:rgba(95,125,60,.25);border-color:var(--moss)}
+.week .today i{outline:2px solid var(--ink);outline-offset:1px}
+.field{display:grid;gap:4px;margin:10px 0}
+.field label{font-size:13px;color:var(--muted)}
+.field input,.field select{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;max-width:280px}
+input[type=range]{width:100%;max-width:none;accent-color:var(--lantern);padding:0}
+.pain{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+details{border-top:1px solid var(--line);padding:8px 0}
+summary{cursor:pointer;font:600 17px var(--display)}
+details p{margin-top:8px}
+.lore{font:italic 17px/1.4 var(--hand);border-left:2px solid var(--moss);padding-left:10px;margin:8px 0}
+.note{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:14px}
+/* pixel pass: square corners, hard drop shadows, dark dialogue boxes like an old point-and-click */
+#map{image-rendering:pixelated}
+.toast{background:#1d1a2b;color:#f3e6c8;border:2px solid #f3e6c8;border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.35);font:600 14px/1.35 var(--display)}
+.toast em{color:#ffd76a}
+.interact button{background:#1d1a2b;color:#ffd76a;border:2px solid #ffd76a;border-radius:0;box-shadow:4px 4px 0 rgba(0,0,0,.35);font:600 15px var(--display)}
+.dock button,.btn,.choice,.card,.chip,.mapctl button,.close{border-radius:3px}
+.dock button,.mapctl button{box-shadow:3px 3px 0 rgba(42,34,51,.35)}
+.btn{box-shadow:2px 2px 0 var(--ink)}
+.btn:active,.dock button:active{transform:translate(1px,1px);box-shadow:none}
+.choice{box-shadow:3px 3px 0 var(--ink)}
+.sheet{border-radius:6px 6px 0 0;border-top:3px solid var(--ink)}
+.lvl{border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<canvas id="map" aria-label="Map of the Vale. Tap to set where you walk."></canvas>
+
+<header class="hud">
+  <button class="lvl" id="lvlBtn" aria-label="Open hero sheet"><span id="lvlNum">1</span></button>
+  <div class="xpwrap">
+    <div class="xprow"><span id="title">Mender</span><span id="xpText" class="mono">0 / 150 XP</span></div>
+    <div class="bar"><i id="xpBar"></i></div>
+  </div>
+  <button class="goal" id="goalBtn" aria-label="Open today's plan">
+    <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="#f6ecd4" stroke="#d8c49b" stroke-width="5"/><circle id="goalArc" cx="26" cy="26" r="21" fill="none" stroke="#8f5c12" stroke-width="5" stroke-linecap="round" stroke-dasharray="131.95" stroke-dashoffset="131.95"/></svg>
+    <span><span><span id="goalText">0/12</span><small>min</small></span></span>
+  </button>
+</header>
+
+<div class="stats" id="stats" hidden>
+  <div class="chip"><b id="sDist">0.00</b> km</div>
+  <div class="chip"><b id="sTime">0</b> min</div>
+  <div class="chip">↑ <b id="sGain">0</b> m</div>
+  <div class="chip"><b id="sCells">0</b> new hexes</div>
+  <div class="chip sim" id="sMode">tap the map to walk</div>
+</div>
+
+<div class="mapctl">
+  <button id="zin" aria-label="Zoom in">+</button>
+  <button id="zout" aria-label="Zoom out">−</button>
+  <button id="recenter" aria-label="Center on you"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="9" r="4"/><path d="M9 1v3M9 14v3M1 9h3M14 9h3"/></svg></button>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="attrib" id="attrib" hidden>© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors</div>
+
+<div class="interact" id="interact" hidden><button id="interactBtn">Visit</button></div>
+
+<nav class="dock">
+  <button data-tab="plan">Dispatch</button>
+  <button data-tab="journal">Logbook</button>
+  <button class="go" id="goBtn">Set out</button>
+  <button data-tab="hero">Satchel</button>
+</nav>
+
+<section class="sheet" id="sheet" hidden aria-modal="false">
+  <div class="sheet-in">
+    <div class="grab"><button class="close" data-act="close">Close</button></div>
+    <div id="sheetBody"></div>
+  </div>
+</section>
+
+<script>
+(()=>{
+const cv=document.getElementById('map'),ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+const SQ3=Math.sqrt(3),R=26,DAY=864e5,REVEAL=70,RANGE=48,WALK=1.4,WATER=0.28;
+const CLEAR_DAYS=3,FADE_DAYS=11,LS='lamplighter-v1',RAD=Math.PI/180;
+/* the world is real San Francisco: (0,0) sits near 18th & Guerrero, 1 unit = 1 metre */
+const ORIGIN={lat:37.7625,lon:-122.4235};
+const ll2w=(lat,lon)=>[(lon-ORIGIN.lon)*111320*Math.cos(ORIGIN.lat*RAD),-(lat-ORIGIN.lat)*110574];
+const w2ll=(x,y)=>[ORIGIN.lat-y/110574,ORIGIN.lon+x/(111320*Math.cos(ORIGIN.lat*RAD))];
+let S=null;
+const now=()=>Date.now()+(S?S.timeOffset:0);
+const dayIndex=(t=now())=>Math.floor((t-new Date(t).getTimezoneOffset()*6e4)/DAY);
+
+/* ---------- deterministic world ---------- */
+function hash(a,b,s){let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul((s|0)+1,-2048144789);h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return (h>>>0)/4294967296}
+const strHash=s=>{let h=7;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h|0};
+function vnoise(x,y,s,p){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf),w=n=>p?((n%p)+p)%p:n;
+  const a=hash(w(xi),w(yi),s),b=hash(w(xi+1),w(yi),s),c=hash(w(xi),w(yi+1),s),d=hash(w(xi+1),w(yi+1),s);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v}
+const height01=(x,y)=>vnoise(x/420,y/420,1)*.6+vnoise(x/160,y/160,2)*.3+vnoise(x/60,y/60,3)*.1;
+const elevM=(x,y)=>30+height01(x,y)*60;
+const hexCenter=(q,r)=>[R*SQ3*(q+r/2),R*1.5*r];
+const hexDist=(q1,r1,q2,r2)=>(Math.abs(q1-q2)+Math.abs(r1-r2)+Math.abs(q1+r1-q2-r2))/2;
+function toHex(x,y){const q=(SQ3/3*x-y/3)/R,r=(2/3*y)/R,s=-q-r;let rq=Math.round(q),rr=Math.round(r),rs=Math.round(s);
+  const dq=Math.abs(rq-q),dr=Math.abs(rr-r),ds=Math.abs(rs-s);if(dq>dr&&dq>ds)rq=-rr-rs;else if(dr>ds)rr=-rq-rs;return [rq,rr]}
+const NB=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
+const pick=(a,h)=>a[Math.floor(h*a.length)%a.length];
+
+/* ---------- what you can pick up, by kind of place ---------- */
+const CATS={
+  flora:{name:'Flora',color:'#7d9a5a',items:['Fennel Frond','Sourgrass Sprig','Nasturtium Blossom','Eucalyptus Leaf','Cypress Cone','Poppy Petal','Wild Blackberry','Mint Sprig']},
+  snacks:{name:'Provisions',color:'#d9a43a',items:['Sourdough Heel','Warm Egg Tart','Focaccia Square','Market Peach','Mission Burrito','Fortune Cookie','Coffee Bean','Chocolate Square']},
+  knowledge:{name:'Knowledge',color:'#5d6fa8',items:['Archive Page','Fossil Rubbing','Cipher Card','Star Chart Scrap','Old Postcard','Pressed Map']},
+  sea:{name:'Sea finds',color:'#4f8fa0',items:['Sea Glass','Gull Feather','Kelp Ribbon','Sand Dollar','Smooth Driftwood']},
+  sky:{name:'Sky finds',color:'#8fa9c4',items:['Bottled Fog','Wind Ribbon','Hilltop Pebble','Sunset Shard','Kite String']},
+  color:{name:'Pigment',color:'#c0607a',items:['Mural Pigment','Paint Chip','Tile Shard','Chalk Stub']}};
+
+/* ---------- hand-written story landmarks on top of real San Francisco
+   [id, real name, Hidden City name, lat, lon, radius m, pickup, resident, their role, what it's like, things to learn]
+   Coordinates are approximate. */
+const LANDMARKS=[
+ ['dolores_park','Dolores Park','The Sunlit Terraces',37.7596,-122.4269,150,'flora','Teo','who sells ice from a cart and reads the weather in it','A hillside of picnic blankets. On warm days the Shimmer is thick enough here to see the old creek bed glowing under the grass.',['From the upper terraces you can see the downtown skyline over the treetops.','Teo swears his ice never melts on days the Fading runs thin.']],
+ ['mission_dolores','Mission Dolores','The Adobe Bell-House',37.7643,-122.4269,70,'knowledge','Sister Alma','a docent who keeps the old bells\' silences','Thick adobe walls that keep time a little slower than the street outside.',['Mission Dolores is the oldest intact building in San Francisco, finished in 1791.','Alma says the walls remember every footstep since then and are patient about all of them.']],
+ ['clarion_alley','Clarion Alley','The Story Alley',37.7631,-122.4216,60,'color','Ines','a muralist who paints what the Shimmer shows her','Every wall here is talking at once, and every wall is right.',['Artists have painted murals in Clarion Alley since 1992.','Ines repaints one corner every new moon. Nobody has ever caught her doing it.']],
+ ['balmy_alley','Balmy Alley','The Mural Lane',37.7516,-122.4126,70,'color','Don Rafa','who has lived on the lane longer than most of the murals','A narrow lane where the garage doors are galleries.',['Balmy Alley has been covered in murals since the early 1970s.','Rafa can tell you which garage door used to be a bakery, and what it sold.']],
+ ['precita_park','Precita Park','The Little Green',37.7470,-122.4120,80,'flora','June','a retired letter carrier who knows every dog by name','A small park where everyone seems to know each other.',['Precita Park sits at the foot of Bernal Hill.','June still walks her old route every morning, out of habit and love.']],
+ ['bernal','Bernal Heights summit','The Kite Hill',37.7432,-122.4142,120,'sky','Wes','a dog walker with eleven leashes and seven dogs','A round green hilltop where the wind is always in a good mood.',['The top of Bernal Hill has wide views across the city and the bay.','Nobody asks Wes about the other four leashes.']],
+ ['ferry_building','Ferry Building','The Grand Galley',37.7955,-122.3937,100,'snacks','Cleo','keeper of the clock tower','A market hall under a clock tower that keeps time for the tides.',['The Ferry Building has stood on the waterfront since 1898.','Cleo runs the clock a minute fast on market days so nobody misses the good bread.']],
+ ['exploratorium','Exploratorium','The Tinker Pier',37.8017,-122.3973,90,'knowledge','Dr. Okafor','a Track-Keeper who calibrates instruments nobody else can see','A pier full of experiments that want to be touched.',['The Exploratorium has been a hands-on science museum since 1969.','Okafor\'s favorite exhibit is the one that hasn\'t been built yet.']],
+ ['pier39','Pier 39 sea lions','The Barking Docks',37.8087,-122.4098,100,'sea','Lou','a harbor worker who translates for the sea lions, badly','Floating docks where the city\'s loudest choir practices all day.',['Sea lions started hauling out at Pier 39 after the 1989 earthquake.','Lou insists the sea lions are unionized. The Courier Union does not comment.']],
+ ['coit_tower','Coit Tower','The Lighthouse That Isn\'t',37.8024,-122.4058,90,'color','Ada Vance','a Courier Union dispatcher who trains the hill\'s parrots','A white tower on a green hill, painted inside with the city\'s working life.',['The murals inside Coit Tower were painted in 1934.','Wild parrots really do live on Telegraph Hill. Ada says they carry mail fast, but only gossip.']],
+ ['washington_sq','Washington Square','The Focaccia Green',37.8008,-122.4101,90,'snacks','Nonna Rosa','a Hearthkeeper who has fed three generations of Scouts','A sunny square where the air smells like bread and coffee.',['Washington Square sits in the middle of North Beach, below Saints Peter and Paul Church.','Rosa keeps one chair turned out from her table at all times. It means a Scout is welcome.']],
+ ['dragon_gate','Chinatown Gate','The Dragon Gate',37.7906,-122.4058,70,'snacks','Mrs. Lau','who keeps the lanterns on Grant Avenue lit and the rumors in order','A green-tiled gate where Grant Avenue begins.',['The Chinatown Gate on Grant Avenue was dedicated in 1970.','Mrs. Lau knows which lanterns are lit for people and which are lit for something else.']],
+ ['cable_turnaround','Powell & Market cable car turntable','The Turning Circle',37.7847,-122.4078,60,'knowledge','Gus','a gripman and Track-Keeper','Where the cable cars spin around and start their climb again.',['San Francisco\'s cable cars are the last manually operated cable car system in the world.','Gus says the cable hums a different note when the fog is coming.']],
+ ['yerba_buena','Yerba Buena Gardens','The Waterfall Garden',37.7850,-122.4025,90,'color','Noor','a Hearthkeeper who serves tea from a cart by the falls','A green lawn in the middle of downtown, with a waterfall you can walk behind.',['Yerba Buena Gardens has a large waterfall memorial to Dr. Martin Luther King Jr.','Noor says the falls are the best place in SoMa to hear yourself think.']],
+ ['main_library','Main Library','The Whispering Stacks',37.7790,-122.4158,70,'knowledge','Professor Val','the Guild\'s archive keeper','Floors of books, and a reading room where the city\'s noise arrives as spoken history.',['The Main Library sits on Civic Center Plaza, across from City Hall.','Val trades stories for samples. Bring her something green.']],
+ ['city_hall','City Hall','The Golden Dome',37.7793,-122.4193,90,'knowledge','Clerk Abernathy','who notarizes things that haven\'t happened yet','A gilded dome where the city keeps its biggest paperwork and its best staircase.',['San Francisco City Hall\'s dome is one of the largest in the world.','Abernathy\'s stamp leaves a faint glow for about a week.']],
+ ['alamo_square','Alamo Square','The Painted Sisters',37.7762,-122.4346,110,'color','Mrs. Pemberton','who has lived in the third house for sixty years','A hilltop park facing a row of Victorian houses in their Sunday best.',['The row of Victorians on Steiner Street is known as the Painted Ladies.','Mrs. Pemberton knows why the paint on her house never fades, and won\'t say.']],
+ ['duboce_park','Duboce Park','The Dog Meadow',37.7693,-122.4334,80,'flora','Rook','a soot-gray greyhound who belongs to nobody','A sunny lawn that belongs, officially, to the dogs.',['Duboce Park is one of the city\'s favorite dog parks.','Rook only appears on foggy mornings and always leaves before the fog does.']],
+ ['buena_vista','Buena Vista Park','The Old Wood',37.7681,-122.4410,120,'flora','The Groundskeeper','who has swept the same path since before the park had a name','A steep, shady wood with winding paths and a view at the top.',['Buena Vista Park, from 1867, is said to be the oldest official park in San Francisco.','Nobody has seen the Groundskeeper arrive. The path is always swept.']],
+ ['haight_ashbury','Haight & Ashbury','The Corner of Forever',37.7699,-122.4469,70,'color','Sunny','a busker who has been playing the same afternoon since 1967','A famous corner where it always feels like a long summer.',['Haight-Ashbury became world-famous during the Summer of Love in 1967.','Sunny knows four songs. On good days the street sings the fifth.']],
+ ['twin_peaks','Twin Peaks','The Two Sisters',37.7544,-122.4477,130,'sky','Nell and Nora','sisters who run the Track-Keepers\' weather station','Two windy hilltops with the whole city laid out below like a map.',['Twin Peaks rise more than 900 feet above the city.','From here, the Ley-Grid shows under the fog as faint lines: Muni tracks, old creeks, cable slots.']],
+ ['sutro_tower','Sutro Tower','The Singing Antenna',37.7552,-122.4528,100,'sky','Marisol','a radio engineer who listens to what the tower picks up after midnight','A giant red-and-white tower that pokes up through the fog like a ship\'s mast.',['Sutro Tower is often the only thing you can see above the fog.','Marisol has a notebook of broadcasts from stations that closed decades ago.']],
+ ['tiled_steps','16th Avenue Tiled Steps','The Mosaic Stair',37.7563,-122.4733,70,'color','Hiro','a tile setter who adds one hidden tile a year','A staircase covered in a mosaic that climbs from the sea to the sky.',['The 16th Avenue steps are covered in a mosaic across about 163 steps.','Hiro will tell you where this year\'s hidden tile is if you climb all the way up.']],
+ ['conservatory','Conservatory of Flowers','The Glass Greenhouse Court',37.7720,-122.4602,80,'flora','Maribel','a botanist and hedge-witch','A white glass palace full of warm, green, dripping air.',['The Conservatory of Flowers in Golden Gate Park opened in 1879.','Maribel keeps a few plants in the back that only bloom when someone sits with them.']],
+ ['de_young','de Young Museum','The Copper Observatory',37.7715,-122.4687,90,'knowledge','Mr. Holloway','a night guard with very good stories','A copper-clad museum slowly turning green, with a tower that looks out over the park.',['The de Young\'s tower has an observation floor with views over Golden Gate Park.','Holloway swears the copper turns greener whenever someone learns something here.']],
+ ['cal_academy','California Academy of Sciences','The Living Roof',37.7699,-122.4661,90,'knowledge','Dr. Ibarra','an entomologist who catalogs insects that only exist in the Shimmer','A museum with a rainforest inside and a meadow on the roof.',['The Academy\'s roof is planted with native wildflowers.','Ibarra\'s field notes have a whole chapter on moths that live under streetlights.']],
+ ['tea_garden','Japanese Tea Garden','The Moon-Bridge Garden',37.7702,-122.4703,80,'flora','Haruki','a gardener who rakes the gravel into maps','Stone paths, a steep moon bridge and very still water.',['The Japanese Tea Garden dates back to the 1894 Midwinter Fair.','Haruki\'s gravel maps are always of a neighborhood you haven\'t walked yet.']],
+ ['stow_lake','Stow Lake','The Island Waterfall',37.7686,-122.4757,120,'flora','Captain Bea','who rents paddle boats and hears everything said on the water','A lake wrapped around a hill with a waterfall tumbling down one side.',['Strawberry Hill sits in the middle of Stow Lake.','Bea says sound carries strangely on the lake. She hears things from other decades.']],
+ ['bison','Bison Paddock','The Great Grazers',37.7697,-122.4977,100,'flora','The Herd','the Golden Gate Park bison, who tolerate you','A quiet meadow where the bison of Golden Gate Park graze.',['Bison have lived in Golden Gate Park since the 1890s.','Guild Scouts sit here to rest their legs. The bison approve of resting.']],
+ ['ocean_beach','Ocean Beach','The Long Shore',37.7609,-122.5097,150,'sea','Mags','a surfer who reads the Fading in the swell','Miles of wide sand where the city meets the Pacific.',['Ocean Beach runs about three and a half miles along the city\'s western edge.','Mags can tell how thick tomorrow\'s fog will be by how the waves break tonight.']],
+ ['sutro_baths','Sutro Baths ruins','The Tidepool Palace',37.7804,-122.5137,100,'sea','Ellis','a ranger who gives tours of the parts that aren\'t there anymore','Old stone walls by the sea, where a swimming palace used to stand.',['The Sutro Baths opened in 1896 as a huge indoor swimming palace.','On certain evenings Ellis\'s tour group is bigger at the end than at the start.']],
+ ['lands_end','Lands End Labyrinth','The Spiral at the Edge',37.7878,-122.5052,90,'sea','The Keeper','who rebuilds the labyrinth whenever a stone is kicked out of place','A stone spiral on a cliff, looking straight out at the Golden Gate.',['The cliffs at Lands End look out toward the Golden Gate Bridge.','Walk the spiral slowly. The ocean gets louder the closer you get to the center.']],
+ ['gg_bridge','Golden Gate Bridge, south end','The Red Gate',37.8078,-122.4750,150,'sky','Karl','the fog, or near enough','A great red bridge that the fog likes to sit on.',['The Golden Gate Bridge\'s color is called International Orange.','On the bridge you can stand in the Fading and watch it decide which way to go.']],
+ ['crissy_field','Crissy Field','The Kite Meadow',37.8039,-122.4645,150,'sky','Dev','who flies kites at dawn to measure the Ley-Grid\'s wind','A long waterfront meadow with the bridge on one side and the city on the other.',['Crissy Field is a restored marsh and meadow along the bay.','Dev\'s kite strings are tied with knots the Guild uses for nothing else.']],
+ ['palace_fine_arts','Palace of Fine Arts','The Swan Rotunda',37.8029,-122.4484,110,'knowledge','Ondine','a swan who has outlived three Guild wardens','A great domed rotunda reflected in a lagoon.',['The Palace of Fine Arts was built for the 1915 Panama-Pacific Exposition.','Ondine remembers every warden. She liked the second one best.']],
+ ['lombard','Lombard Street\'s crooked block','The Ribbon Road',37.8021,-122.4187,80,'flora','The Castellanos','who have tended the hydrangeas for forty years and argue about every one','A brick road that curls downhill between flower beds.',['This block of Lombard Street has eight hairpin turns.','The Castellanos agree on one thing: the hydrangeas are blue because of the fog.']],
+ ['glen_canyon','Glen Canyon Park','The Hidden Canyon',37.7406,-122.4425,150,'flora','Wren','a Guild Scout who walked into the canyon in 1994 and decided to stay','A wild canyon with rocks, willows and a creek, right in the middle of the city.',['Islais Creek runs through Glen Canyon, one of the city\'s few above-ground creeks.','Wren knows the canyon better than any map. Ask her about the rock with the handprint.']]
+].map(a=>{const [x,y]=ll2w(a[3],a[4]);return {id:a[0],kind:'landmark',name:a[1],build:a[2],r:a[5],cat:a[6],who:a[7],role:a[8],blurb:a[9],lore:a[10],x,y}});
+const LMBY=Object.fromEntries(LANDMARKS.map(l=>[l.id,l]));
+
+/* ---------- real places pulled from OpenStreetMap (parks, murals, viewpoints, cafés, libraries...) ---------- */
+const OSM_Q=[['leisure','park','grove'],['leisure','garden','grove'],['leisure','playground','grove'],['tourism','viewpoint','lookout'],['tourism','artwork','mural'],['tourism','museum','archive'],['amenity','library','archive'],['amenity','fountain','spring'],['amenity','cafe','hearthkeeper'],['shop','bakery','hearthkeeper'],['amenity','marketplace','hearthkeeper']];
+const OSMKIND={grove:{label:'Green',cat:'flora',people:['Ignacio','Ruth','Ben','Mae'],role:'a groundskeeper who knows where the Shimmer pools',desc:'A patch of green the Fading never quite reaches.'},
+  lookout:{label:'Lookout',cat:'sky',people:['Nell','Oz','Bea','Jun'],role:'a Track-Keeper surveyor taking readings',desc:'A high spot with a long view.'},
+  mural:{label:'Mural',cat:'color',people:['Kai','Luz','Theo','Marisa'],role:'a muralist touching up a corner',desc:'A painted wall. Look long enough and something in it moves.'},
+  archive:{label:'Archive',cat:'knowledge',people:['Hal','Imogen','Sef','Rania'],role:'one of Professor Val\'s correspondents',desc:'A place that keeps the city\'s memory on shelves.'},
+  spring:{label:'Spring',cat:'sea',people:['Pia','Ode'],role:'who tends the water and listens to it',desc:'Running water in the middle of the street. The Ley-Grid likes it.'},
+  hearthkeeper:{label:'Hearthkeeper',cat:'snacks',people:['Tomás','Priya','Sam','Lena','Abel','Yuki'],role:'a Hearthkeeper behind the counter',desc:'A Hearthkeeper waystation. There is a chair turned slightly out from a table.'},
+  echo:{label:'Echo',cat:'knowledge',people:['Albert','Cora'],role:'a Guild historian',desc:'A historic spot where the city\'s noise arrives as spoken history.'}};
+const KIND_LORE={grove:['Groundskeepers say every park in the city sits on an old creek or an old dune.','The Shimmer pools in green places the way fog pools in valleys.'],lookout:['Track-Keepers take readings from every hilltop at least once a season.','From high places the Ley-Grid shows as faint lines under the fog.'],mural:['Muralists in the Guild sign their work with a small mark in the bottom corner. Look for it.','Some walls hold paint better than others. Muralists say it depends on what the wall remembers.'],archive:['Professor Val keeps a branch catalog of every archive in the city, including the ones that move.','Archives hum faintly. It is the sound of a lot of attention, stored.'],spring:['Every fountain in the city is a little louder after midnight.','Water remembers routes. So do the people who follow it.'],hearthkeeper:['Hearthkeepers trade rumors for company. A Scout who sits for ten minutes hears plenty.','A chair turned slightly out from the table means a Scout is welcome.'],echo:['Historic plaques mark the places where the city remembers out loud.','The Guild was founded in 1906, the year the city had to be redrawn.']};
+
+/* ---------- fallback places when map data can't load ---------- */
+const PRE=['Ash','Wren','Thorn','Mill','Bram','Cinder','Fern','Lark','Moss','Rook','Sedge','Tallow','Willow','Hollow','Flint','Heron'];
+const SUF=['ford','hold','gate','mere','stead','watch','cross','wick','combe','barrow'];
+const NPC=[['Marta','quartermaster'],['Dov','courier'],['Sela','herbalist'],['Pim',"mapmaker's apprentice"],['Hollis','bell-keeper'],['Rue','retired Scout']];
+
+/* ---------- the cast, words and critters ---------- */
+const GREET=['"Scout. Good timing. Sit, I\'ll bring you something."','"You look like you walked here the long way. Good."','"Maren said you might come by."','"The fog lifted off this block about an hour before you showed up. Funny how that works."','"Got a minute? I have something that needs carrying, if your knee\'s up for it."'];
+const GREETB=['"Oh. You\'re the new Scout."','"Back again. Good."','"There you are. Saved you a seat."','"My favorite Scout. Don\'t tell the others."','"I tell people about you, you know."','"You\'re practically family now."'];
+const FRIEND=['','remembers your name now.','saves you a seat when you come by.','tells you something about the neighborhood most people don\'t know.','introduces you to people as "our Scout".','gives you a small token to keep. You\'re family now.'];
+const LORE=['The Wayfarer\'s Guild was founded in 1906, the year the city had to be redrawn.','The Fading is not an enemy. A place nobody notices simply goes quiet, the way a room does.','Every Muni line runs along a ley line. Nobody can agree which came first.','Old Guild saying: the hill you dread on Monday is a staircase by Friday.','Hearthkeepers leave a chair turned slightly out from the table. It means a Scout is welcome.','Some doors in the city only open for people who are taking their time.','Thresholds feel like a temperature drop, or a radio losing its station. Stop and look when you notice one.','When the fog rolls back over a street you know, it is keeping your place warm.','Cable cars hum differently when the Ley-Grid is strong. Gripmen feel it in their hands.','Every neighborhood has someone who is quietly rooting for you.'];
+const CRITTERS=[['Brass Magpie','A clockwork familiar the Courier Union uses for small, urgent things.'],['Lamplight Moth','Gathers under old streetlights. Brightest just before the fog comes in.'],['Rail Wisp','A spark that runs along the Muni tracks a few seconds ahead of the train.'],['Shimmer Cat','Sits exactly where the Shimmer is thickest, and pretends not to.'],['Fog Hound','A shape in the fog that walks beside you for a block, then is gone.'],['Tide Newt','Lives in the Ocean Beach tide pools, and somehow in puddles.'],['Mural Moth','Its wings change to match the nearest wall.'],['Paper Crane','Folded from an old Muni transfer. Still trying to get somewhere.'],['Starter Sprite','Lives in sourdough jars. Hearthkeepers swear by them.'],['Hill Hare','Only seen by walkers who stop to catch their breath.'],['Parrot Herald','One of the Telegraph Hill flock, running gossip across the city.'],['Static Fox','A flicker at the edge of streetlight. Smells faintly of ozone.'],['Bookworm','Lives in libraries and secondhand shops. Reads everything.'],['Ley Heron','Stands in old creek beds that were paved over a century ago.'],['Signal Bat','Roosts on Sutro Tower and hunts dropped radio.'],['Bridge Gull','Insists it owns the Golden Gate.']];
+const CAST=[['Maren','who runs Guild dispatch from a café on Valencia','"Thought I\'d see your route for myself. You\'re doing better than you think."'],['Kip','a Courier Union runner with a brass magpie','"Can\'t stop, can\'t stop. Okay. I can stop for a minute."'],['Professor Val','the Guild\'s archive keeper','"Ah, the new Scout. Bring me something green next time and I\'ll tell you about the creek under this street."'],['Bramble','a soot-gray cat who points out thresholds','Bramble looks at you, then at a crack in the sidewalk, then back at you. You get the point.']];
+const DRIFTS={shimmer:{name:'A Shimmer',desc:'The air bends here like heat over pavement, and a radio somewhere loses its station.',act:'Stand still and look'},
+  courier:{name:'A Courier Drop',desc:'Something wrapped in brown paper is tucked behind a planter, a Courier Union knot on the string.',act:'Open it'},
+  familiar:{name:'A Familiar',desc:'Something small is watching you from the edge of the sidewalk.',act:'Crouch down slowly'},
+  wanderer:{name:'A Familiar Face',desc:'Someone from the Guild is here, taking a break.',act:'Say hello'}};
+const TITLES=[[1,'Probationary Scout'],[3,'Scout'],[5,'Pathfinder'],[8,'Wayfinder'],[12,'Cartographer'],[17,'Warden of the Folio']];
+const CHAPTERS=[
+ {lvl:1,t:'Probationary',p:'The Wayfarer\'s Guild doesn\'t recruit. It notices. You spent weeks watching the street from a window with your leg up, and somewhere in week four the street started watching back. Then a brass magpie dropped off a folio and a note from someone called Maren: "Short routes. Write down what shimmers. We\'ll talk."',m:'"Short routes. Write down what shimmers."'},
+ {lvl:2,t:'Resonance',p:'Places hold attention the way stone holds heat. Walk a block and it warms. Leave it alone and the fog settles back in. The Guild calls it the Fading. Locals just call it Karl. Neither is a disaster. It just means the city likes company.',m:'"The streets near you are going quiet again. Walk them. Old ground counts."'},
+ {lvl:3,t:'The Hearthkeepers',p:'Some cafés, bakeries and corner markets are run by people who know exactly what you are. They\'ll trade rumors for your company and keep a chair turned out for you.',m:'"Find a Hearthkeeper. Sit for ten minutes. Listen."'},
+ {lvl:5,t:'High Ground',p:'From the hills, the Ley-Grid shows as faint lines under the fog: Muni tracks, old creek beds, cable slots. The Track-Keepers want readings from up there. Take the stairs slowly.',m:'"Nell and Nora want readings from a hilltop. One hill. Your pace."'},
+ {lvl:7,t:'The Courier Union',p:'Kip says the Union has been watching your routes. They\'d like you to carry something. They won\'t say what.',m:'"The Union asked about you by name. I said you\'d think about it."'},
+ {lvl:10,t:'Cartographer',p:'The Guild stamps your folio. Your map is now the most accurate one of this part of the city, which mostly says something about the other maps.',m:'"You earned that stamp one walk at a time."'},
+ {lvl:15,t:'Platform Zero',p:'Two trains arrive at the same time, and a platform that shouldn\'t exist is suddenly there. Kip is waiting on it.',m:'"Go. Then come back and tell me everything."'}];
+
+/* ---------- places ---------- */
+let OSMP=[],OSMBY={};
+const osmOn=()=>OSMP.length>0;
+const poiCache=new Map();
+function poiAt(q,r){const k=q+','+r;if(poiCache.has(k))return poiCache.get(k);
+  const [hq,hr]=toHex(S.hearth.x,S.hearth.y);let p=null;const [x,y]=hexCenter(q,r),h=height01(x,y);
+  if(q===hq&&r===hr)p={kind:'hearth',name:'Home'};
+  else if(!osmOn()&&q===hq-4&&r===hr-1)p={kind:'outpost',name:'Wrenford Waystation'};
+  else if(!osmOn()&&hexDist(q,r,hq,hr)>3&&hash(q,r,7)<0.022&&h>=WATER){const t=hash(q,r,8);
+    let kind=t<.36?'outpost':t<.64?'shrine':t<.84?'cache':'lookout';
+    if(kind==='lookout'&&h<.56)kind='shrine';if(kind!=='lookout'&&h>.7&&t>.5)kind='lookout';
+    const n=hash(q,r,9),n2=hash(q,r,10);
+    const name=kind==='outpost'?pick(PRE,n)+pick(SUF,n2)+' Waystation':kind==='shrine'?pick(PRE,n)+' Threshold':kind==='cache'?'Courier Cache':pick(PRE,n)+(n2<.5?' Tor':' Lookout');
+    p={kind,name}}
+  if(p)Object.assign(p,{id:k,q,r,x,y});poiCache.set(k,p);return p}
+const placeById=id=>LMBY[id]||OSMBY[id]||(S.drifts||[]).find(d=>d.id===id)||poiCache.get(id);
+const seedOf=p=>p.q!=null?[p.q,p.r]:[strHash(p.id),17];
+function resident(p){if(p.kind==='landmark')return [p.who,p.role];if(p.kind==='hearth')return ['Bramble','a soot-gray cat who has decided to live with you'];
+  const [a,b]=seedOf(p);if(OSMKIND[p.kind])return [pick(OSMKIND[p.kind].people,hash(a,b,12)),OSMKIND[p.kind].role];
+  if(p.kind==='outpost')return pick(NPC,hash(a,b,12));if(p.kind==='shrine')return ['Bramble','a soot-gray cat who points out thresholds'];
+  if(p.kind==='cache')return ['Kip','a Courier Union runner'];return ['Nell','a Track-Keeper surveyor']}
+const bondKey=p=>p.kind==='landmark'?p.who:(p.osm?`${resident(p)[0]} at ${p.name}`:resident(p)[0]);
+const label=p=>p.build||p.name;
+function catOf(p){if(p.kind==='landmark')return p.cat;if(OSMKIND[p.kind])return OSMKIND[p.kind].cat;if(p.kind==='outpost')return 'snacks';if(p.kind==='shrine')return 'knowledge';if(p.kind==='lookout')return 'sky';
+  return pick(Object.keys(CATS),hash(...seedOf(p),15))}
+
+/* ---------- state ---------- */
+function newState(){return {v:1,timeOffset:0,player:{x:0,y:0},hearth:{x:0,y:0},home:0,cells:{},owned:{},xp:0,tot:{m:0,min:0,gain:0,cells:0},days:{},quests:[],done:{},visits:{},discovered:{},log:[],plan:{baseMin:12,ramp:10,startDay:0,week:0,mult:1},outing:null,mode:'sim',simSpeed:8,intro:true,lastPain:null,sound:true,satchel:{},bonds:{},learned:[],bestiary:{},logbook:[],loreIdx:0,osm:{},osmAreas:{},drifts:[],driftDay:null,yieldDay:null}}
+function load(){try{const s=JSON.parse(localStorage.getItem(LS));if(s&&s.v===1)return s}catch(e){}return null}
+let saveT=0;function save(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}}
+const clarity=t=>{if(!t)return 0;const age=(now()-t)/DAY;return age<CLEAR_DAYS?1:Math.max(0,1-(age-CLEAR_DAYS)/FADE_DAYS)};
+function today(){const k=dayIndex();return S.days[k]||(S.days[k]={min:0,m:0,gain:0,rest:false,pain:null,cells:0,renew:0,found:0})}
+const bump=(f,n=1)=>{const td=today();td[f]=(td[f]||0)+n};
+const addLog=t=>{S.logbook.unshift({d:dayIndex(),t});S.logbook=S.logbook.slice(0,80)};
+const hearts=n=>'♥'.repeat(n)+'♡'.repeat(5-n);
+
+/* 8-bit chimes + a short buzz */
+let actx=null;
+function chime(kind){if(S.sound===false)return;try{navigator.vibrate&&navigator.vibrate(kind==='level'?[60,40,60]:50)}catch(e){}
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const t0=actx.currentTime,notes={find:[660,990],quest:[523,659,784,1047],level:[392,523,659,784,1047]}[kind]||[660];
+    notes.forEach((f,i)=>{const o=actx.createOscillator(),g=actx.createGain(),t=t0+i*.09;o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.05,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+.12);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+.14)})}catch(e){}}
+
+/* the daily dispatch from Maren: one small extra goal per day, never a climb */
+function dispatch(){const d=dayIndex(),L=level(),opts=[{f:'cells',target:10+L*2,label:n=>`Ink ${n} new hexes onto the map`},{f:'renew',target:8+L,label:n=>`Walk back through ${n} streets the fog has settled on`},{f:'found',target:1,label:()=>'Find one place you have never seen'}];
+  let o=opts[Math.floor(hash(d,7,21)*opts.length)%opts.length];if(o.f==='renew'&&fadedCount()<o.target)o=opts[0];
+  return {f:o.f,target:o.target,label:o.label(o.target),reward:40+L*5}}
+function checkDaily(){const td=S.days[dayIndex()];if(!td)return;
+  if(!td.goalHit&&td.min>=goalMin()){td.goalHit=1;addXP(15,'Daily goal');toast(`Today's walk goal met <em>+15</em>`);chime('quest')}
+  if(!td.dispatch){const o=dispatch();if((td[o.f]||0)>=o.target){td.dispatch=1;addXP(o.reward,'Dispatch');toast(`Dispatch complete <em>+${o.reward}</em>`);chime('quest');addLog('Finished Maren\'s dispatch: '+o.label)}}}
+const xpFor=l=>Math.round(150*Math.pow(l-1,1.8));
+function level(){let l=1;while(S.xp>=xpFor(l+1))l++;return l}
+const titleFor=l=>TITLES.filter(t=>l>=t[0]).pop()[1];
+const goalMin=()=>Math.max(1,Math.round(S.plan.baseMin*S.plan.mult));
+const rank=(v,u)=>Math.floor(Math.sqrt(v/u))+1;
+S=Object.assign(newState(),load()||{});
+if(!S.plan.startDay)S.plan.startDay=dayIndex();
+if(!Object.keys(S.cells).length)revealAround(S.hearth.x,S.hearth.y,95,false);
+
+function syncPlan(){const p=S.plan,w=Math.floor((dayIndex()-p.startDay)/7);
+  while(p.week<w){let walked=0,maxPain=0;for(let d=p.startDay+7*p.week;d<p.startDay+7*p.week+7;d++){const r=S.days[d];if(r){if(r.min>=3)walked++;if(r.pain!=null)maxPain=Math.max(maxPain,r.pain)}}
+    if(walked>=2&&maxPain<5)p.mult*=1+p.ramp/100;p.week++}}
+syncPlan();
+
+/* ---------- progression ---------- */
+function addXP(n,label){const b=level();S.xp+=n;const o=S.outing;if(o){o.xp+=n;o.br[label]=(o.br[label]||0)+n}
+  const a=level();if(a>b){toast(`Level <em>${a}</em> · ${titleFor(a)}`);chime('level');addLog(`Reached level ${a}: ${titleFor(a)}`);const ch=CHAPTERS.find(c=>c.lvl===a);if(ch)toast(`New chapter: ${ch.t}`)}}
+function quest(type,n){for(const q of S.quests.slice()){if(q.type!==type)continue;q.prog=Math.min(q.target,q.prog+n);
+  if(q.prog>=q.target){S.quests=S.quests.filter(x=>x!==q);S.done[q.id]=1;addXP(q.reward,'Errands');toast(`Errand done: ${q.title} <em>+${q.reward}</em>`);chime('quest');addLog(`Finished an errand for ${q.from}: ${q.title}`)}}}
+let foundQueue=[];
+function found(p,xp){S.discovered[p.id]=now();addXP(xp,'Discoveries');bump('found');quest('discover',1);foundQueue.push(label(p));addLog(`Found ${label(p)}${p.kind==='landmark'?' at '+p.name:''}`)}
+function discover(q,r,award){const p=poiAt(q,r);if(!p||S.discovered[p.id])return;if(!award){S.discovered[p.id]=now();return}found(p,15)}
+function seeCritter(seedA,seedB,forceNew){let i=Math.floor(hash(seedA,seedB,dayIndex()+50)*CRITTERS.length)%CRITTERS.length;
+  if(forceNew){const unseen=CRITTERS.map((c,j)=>j).filter(j=>!S.bestiary[CRITTERS[j][0]]);if(unseen.length)i=unseen[Math.floor(hash(seedA,seedB,9)*unseen.length)]}
+  const [n]=CRITTERS[i],seen=S.bestiary[n]||0;S.bestiary[n]=seen+1;
+  if(seen){addXP(5,'Bestiary');toast(`A ${n} crossed your path`)}else{addXP(20,'Bestiary');toast(`New in your Bestiary: <em>${n}</em>`);addLog(`First sighting: ${n}`)}chime('find');return n}
+function touch(q,r,award){const k=q+','+r,t=S.cells[k],c=clarity(t);S.cells[k]=now();if(c>=.6)return;
+  if(award){if(!t){addXP(4,'New ground');S.tot.cells++;if(S.outing)S.outing.cells++;bump('cells');quest('uncover',1)}
+    else{addXP(c<=0?3:2,'Fog lifted');if(S.outing)S.outing.renew++;bump('renew');quest('renew',1)}
+    if(S.outing&&hash(q,r,dayIndex()*7+3)<0.02)seeCritter(q,r)}
+  discover(q,r,award)}
+function revealAround(x,y,rad,award){const [pq,pr]=toHex(x,y),n=Math.ceil(rad/(R*1.5))+1;
+  for(let dq=-n;dq<=n;dq++)for(let dr=-n;dr<=n;dr++){const q=pq+dq,r=pr+dr,[cx,cy]=hexCenter(q,r);if(Math.hypot(cx-x,cy-y)<=rad)touch(q,r,award)}}
+
+/* ---------- territory: walk a loop and everything inside becomes yours ---------- */
+function polyArea(pts){let a=0;for(let i=0,j=pts.length-1;i<pts.length;j=i++)a+=(pts[j][0]+pts[i][0])*(pts[j][1]-pts[i][1]);return Math.abs(a/2)}
+function inPoly(x,y,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const [xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c}
+function checkLoop(o){const tr=o.trail,n=tr.length;if(n<25)return;const [ex,ey]=tr[n-1],from=o.loopFrom||0;
+  for(let j=from;j<n-20;j++){const [jx,jy]=tr[j];if(Math.hypot(jx-ex,jy-ey)<24){const poly=tr.slice(j,n),A=polyArea(poly);o.loopFrom=n-1;if(A>1200&&A<4e6)claim(poly);return}}}
+function claim(poly){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}
+  const [qa,ra]=toHex(x0,y0),[qb,rb]=toHex(x1,y1);let n=0;
+  for(let r=Math.min(ra,rb)-1;r<=Math.max(ra,rb)+1;r++)for(let q=Math.min(qa,qb)-Math.abs(rb-ra)-2;q<=Math.max(qa,qb)+Math.abs(rb-ra)+2;q++){const [cx,cy]=hexCenter(q,r);
+    if(cx<x0-R||cx>x1+R||cy<y0-R||cy>y1+R||!inPoly(cx,cy,poly))continue;const k=q+','+r;touch(q,r,true);if(!S.owned[k]){S.owned[k]=dayIndex();n++}}
+  if(n){addXP(Math.min(200,n*5),'Territory');toast(`Territory claimed: <em>${n}</em> hexes are yours`);chime('quest');addLog(`Walked a loop and claimed ${n} hexes`);dirty=true}}
+/* owned ground that's still bright gathers things for you each day */
+function nearestCat(x,y){let best='flora',bd=450;for(const p of LANDMARKS.concat(OSMP)){const d=Math.hypot(p.x-x,p.y-y);if(d<bd){bd=d;best=catOf(p)}}return best}
+function dailyYield(){const d=dayIndex();if(S.yieldDay==null){S.yieldDay=d;return}if(S.yieldDay>=d)return;const days=Math.min(3,d-S.yieldDay);S.yieldDay=d;
+  const keys=Object.keys(S.owned).filter(k=>clarity(S.cells[k])>=.5);if(!keys.length)return;
+  const n=Math.min(6,Math.ceil(keys.length/15))*days,got={};
+  for(let i=0;i<n;i++){const k=keys[Math.floor(hash(d,i,71)*keys.length)],[q,r]=k.split(',').map(Number),[x,y]=hexCenter(q,r),cat=nearestCat(x,y),item=pick(CATS[cat].items,hash(d,i,72));S.satchel[item]=(S.satchel[item]||0)+1;got[item]=(got[item]||0)+1}
+  const list=Object.entries(got).map(([k,v])=>`${v} ${k}`).join(', ');toast(`Your territory gathered overnight: <em>${list}</em>`);addLog(`Territory gathered ${list}`);save()}
+
+/* ---------- daily drifts: a few things that appear near home, sized to today's goal ---------- */
+function ensureDrifts(){const d=dayIndex();if(S.driftDay===d)return;S.driftDay=d;S.drifts=[];
+  const maxR=Math.min(900,Math.max(160,goalMin()*35)),types=Object.keys(DRIFTS);
+  for(let i=0;i<3;i++){const a=hash(d,i,61)*Math.PI*2,dist=maxR*(.4+.6*hash(d,i,62)),t=types[Math.floor(hash(d,i,63)*types.length)%types.length];
+    S.drifts.push({id:`drift:${d}:${i}`,kind:'drift',dtype:t,name:DRIFTS[t].name,x:S.hearth.x+Math.cos(a)*dist,y:S.hearth.y+Math.sin(a)*dist,done:0})}}
+
+/* ---------- real places from OpenStreetMap, shipped with the game as places.json ---------- */
+function buildOSM(list){OSMP=[];for(const [k,n,la,lo] of list){const [x,y]=ll2w(la,lo);if(LANDMARKS.some(l=>Math.hypot(l.x-x,l.y-y)<80))continue;OSMP.push({id:'p'+strHash(k+n+la+lo),kind:k,name:n,osm:1,x,y})}
+  OSMBY=Object.fromEntries(OSMP.map(p=>[p.id,p]));poiCache.clear();dirty=true}
+fetch('places.json').then(r=>r.ok?r.json():[]).then(l=>{if(Array.isArray(l)&&l.length)buildOSM(l)}).catch(()=>{});
+function moveTo(nx,ny,alt,activeMs){const P=S.player,d=Math.hypot(nx-P.x,ny-P.y);P.x=nx;P.y=ny;const o=S.outing;if(!o)return;
+  const td=today();o.m+=d;S.tot.m+=d;td.m+=d;o.dAcc+=d;while(o.dAcc>=8){o.dAcc-=8;addXP(1,'Distance')}quest('walk',d);
+  const mins=activeMs/6e4;o.min+=mins;S.tot.min+=mins;td.min+=mins;o.tAcc+=mins;while(o.tAcc>=1){o.tAcc-=1;addXP(2,'Time on foot')}
+  if(alt!=null){const thr=S.mode==='gps'?3:1.5;if(o.ref==null)o.ref=alt;else if(alt-o.ref>=thr){const g=alt-o.ref;o.gain+=g;S.tot.gain+=g;td.gain+=g;o.gAcc+=g;while(o.gAcc>=1){o.gAcc-=1;addXP(2,'Ascent')}quest('climb',g);o.ref=alt}else if(alt<o.ref)o.ref=alt}
+  const last=o.trail[o.trail.length-1];if(!last||Math.hypot(last[0]-nx,last[1]-ny)>6){o.trail.push([nx,ny]);checkLoop(o)}
+  revealAround(nx,ny,REVEAL,true);
+  for(const l of LANDMARKS)if(!S.discovered[l.id]&&Math.hypot(l.x-nx,l.y-ny)<=l.r+35)found(l,30);
+  for(const p of OSMP)if(!S.discovered[p.id]&&Math.hypot(p.x-nx,p.y-ny)<=60)found(p,10);
+  dirty=true}
+
+/* ---------- outings ---------- */
+let dest=null,watchId=null,wake=null,lastFix=null;
+function startOuting(){S.outing={start:now(),m:0,min:0,gain:0,cells:0,renew:0,xp:0,br:{},dAcc:0,tAcc:0,gAcc:0,ref:null,loopFrom:0,trail:[[S.player.x,S.player.y]]};
+  today();if(S.mode==='gps')startGPS();try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}
+  toast(S.mode==='sim'?'Outing started. Tap the map to walk. Walk a loop to claim what\'s inside.':'Outing started. Walk a loop to claim what\'s inside.');ui();save()}
+function endOuting(){const o=S.outing;S.outing=null;dest=null;stopGPS();try{wake&&wake.release()}catch(e){}wake=null;
+  if(o.m<15&&o.min<.5){toast('Outing cancelled');ui();save();return}
+  const entry={day:dayIndex(),m:o.m,min:o.min,gain:o.gain,cells:o.cells,renew:o.renew,xp:o.xp,pain:null};S.log.unshift(entry);S.log=S.log.slice(0,40);
+  addLog(`Walked ${(o.m/1000).toFixed(2)} km in ${Math.round(o.min)} min`);
+  syncPlan();ui();save();openSheet(()=>renderSummary(o,entry))}
+function setHome(x,y){S.hearth={x,y};S.home=1;S.player.x=x;S.player.y=y;poiCache.clear();colCache.clear();S.driftDay=null;ensureDrifts();
+  if(S.outing)S.outing.trail=[[x,y]];revealAround(x,y,95,false);cam.x=x;cam.y=y;follow=true;lastFix=null;toast('Home set. Daily drifts will show up around here.');addLog('Set a new home');save();dirty=true}
+
+let gpsAcc=null;
+function startGPS(){if(!navigator.geolocation){gpsFail();return}lastFix=null;gpsAcc=null;
+  try{watchId=navigator.geolocation.watchPosition(onFix,gpsFail,{enableHighAccuracy:true,maximumAge:2000,timeout:60000})}catch(e){gpsFail()}}
+function stopGPS(){if(watchId!=null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}watchId=null}}
+function gpsFail(err){if(err&&err.code&&err.code!==1){toast('Still looking for a GPS signal. Stepping outside helps.');return}
+  stopGPS();if(S.mode==='gps'){S.mode='sim';toast('Location is blocked, so you are back to simulated walking. Allow location for this site in your browser settings to use GPS.');ui();save()}}
+function onFix(pos){const c=pos.coords;gpsAcc=Math.round(c.accuracy);if(c.accuracy>40)return;
+  const [x,y]=ll2w(c.latitude,c.longitude),t=pos.timestamp||Date.now();
+  if(!S.home){setHome(x,y);lastFix={x,y,t};return}
+  let active=0;
+  if(lastFix){const dt=(t-lastFix.t)/1000,d=Math.hypot(x-lastFix.x,y-lastFix.y);if(d<4)return;if(dt>0&&d/dt>12)return;if(dt<30&&d/dt>.3)active=dt*1000}
+  lastFix={x,y,t};moveTo(x,y,c.altitude,active);follow=true}
+function homeHere(){if(S.mode!=='gps'){setHome(S.player.x,S.player.y);return}
+  if(!navigator.geolocation){toast('Location is not available here.');return}toast('Finding where you are…');
+  navigator.geolocation.getCurrentPosition(p=>{const [x,y]=ll2w(p.coords.latitude,p.coords.longitude);setHome(x,y)},()=>toast('Could not get your location. Allow location for this site and try again.'),{enableHighAccuracy:true,timeout:30000})}
+
+/* ---------- errands ---------- */
+const offers=new Map();
+const UNIT={walk:m=>m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m',climb:m=>Math.round(m)+' m',uncover:n=>Math.round(n)+' hexes',renew:n=>Math.round(n)+' streets',discover:n=>n+(n===1?' place':' places')};
+function fadedCount(){let n=0;for(const k in S.cells){if(clarity(S.cells[k])<.6)n++}return n}
+function makeOffers(p){const d=dayIndex(),L=level(),gm=goalMin(),from=p.kind==='hearth'?'the Guild board':resident(p)[0],[sa,sb]=seedOf(p),list=[];
+  for(let i=0;i<2;i++){const id=`${p.id}|${d}|${i}`,h=hash(sa*31+d,sb*17+i,11);let type=pick(['walk','uncover','climb','renew','discover'],h);
+    if(type==='renew'&&fadedCount()<8+L*2)type='uncover';let q;
+    if(type==='walk'){const m=Math.max(300,Math.round(gm*65*.8/50)*50);q={title:'Carry a sealed letter',text:`Walk ${UNIT.walk(m)} on your outings so the letter reaches the next Hearthkeeper.`,target:m,reward:30+L*8}}
+    else if(type==='uncover'){const n=12+L*3;q={title:'Survey the edges',text:`Ink ${n} hexes nobody in the Guild has mapped yet.`,target:n,reward:30+L*8}}
+    else if(type==='climb'){const n=8+L*3;q={title:'Take a reading uphill',text:`Gain ${n} m of height on foot. Any hill counts, at any pace.`,target:n,reward:35+L*9}}
+    else if(type==='renew'){const n=8+L*2;q={title:'Keep the streets awake',text:`Walk back through ${n} streets the fog has settled on.`,target:n,reward:30+L*8}}
+    else{const n=L>4?2:1;q={title:'Follow up a rumor',text:`Find ${n===1?'a place':'two places'} you have never seen.`,target:n,reward:40+L*10}}
+    Object.assign(q,{id,type,prog:0,from,fromId:p.id});offers.set(id,q);list.push(q)}
+  return list}
+function offerHTML(q){const taken=S.quests.some(x=>x.id===q.id),done=S.done[q.id],full=S.quests.length>=4;
+  const lbl=done?'Done':taken?'Accepted':full?'Errand list full':'Accept';
+  return `<div class="card"><div class="top"><b>${q.title}</b><span class="xp">+${q.reward} XP</span></div><div>${q.text}</div><div class="row"><button class="btn" data-act="accept" data-id="${q.id}" ${done||taken||full?'disabled':''}>${lbl}</button></div></div>`}
+function clock(frac,segs){const r=17,c=20;let s='';for(let i=0;i<segs;i++){const a0=i/segs*2*Math.PI-Math.PI/2,a1=(i+1)/segs*2*Math.PI-Math.PI/2;
+    s+=`<path d="M${c} ${c}L${(c+r*Math.cos(a0)).toFixed(1)} ${(c+r*Math.sin(a0)).toFixed(1)}A${r} ${r} 0 0 1 ${(c+r*Math.cos(a1)).toFixed(1)} ${(c+r*Math.sin(a1)).toFixed(1)}Z" fill="${frac*segs>=i+1-1e-9?'#d9a43a':'#eadbb8'}" stroke="#3b2a1a" stroke-width="1.2"/>`}
+  return `<svg class="clock" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">${s}</svg>`}
+function questHTML(q){return `<div class="card qcard">${clock(q.prog/q.target,q.type==='walk'||q.type==='uncover'?6:4)}<div class="top"><b>${q.title}</b><span class="xp">+${q.reward} XP</span></div><div class="from">from ${q.from}</div><div>${q.text}</div><div class="from mono">${UNIT[q.type](q.prog)} / ${UNIT[q.type](q.target)}</div></div>`}
+
+/* ---------- visiting places and the daily choice ---------- */
+function visit(p){const v=S.visits[p.id]||(S.visits[p.id]={first:0,last:-1,used:-99}),d=dayIndex(),fresh=!v.first;
+  if(fresh){v.first=now();if(p.kind!=='hearth'&&p.kind!=='drift')addXP(p.kind==='landmark'?25:10,'Visits')}else if(v.last!==d&&p.kind!=='hearth'&&p.kind!=='drift')addXP(5,'Visits');
+  v.last=d;save();openSheet(()=>renderPOI(p,fresh))}
+function choicesHTML(p){const v=S.visits[p.id],d=dayIndex(),[who]=resident(p),cat=CATS[catOf(p)];
+  if(v.used===d)return `<h3>Today's choice</h3><div class="card">${v.result||''}<div class="from">Come back tomorrow for another choice.</div></div>`;
+  const opts=[];
+  if(p.kind==='lookout')opts.push(['lookout','Survey from up here','Ink every hex within about 230 m. +30 XP']);
+  opts.push(['forage',`Gather: ${cat.name}`,'Take something this place is known for. +12 XP']);
+  opts.push(['learn','Ask about this place','Hear what it remembers. +15 XP, +1 Lore']);
+  opts.push(['befriend',`Sit with ${who}`,`Friendship <span class="hearts">${hearts(S.bonds[bondKey(p)]||0)}</span> +1. +10 XP`]);
+  return `<h3>Choose one for today</h3><div class="choices">${opts.map(([c,t,s])=>`<button class="choice" data-act="choose" data-id="${p.id}" data-c="${c}"><b>${t}</b><span>${s}</span></button>`).join('')}</div>`}
+function choose(p,c){const v=S.visits[p.id],d=dayIndex();if(!v||v.used===d)return;const [who]=resident(p),key=bondKey(p);let res='';
+  if(c==='forage'){const cat=catOf(p),item=pick(CATS[cat].items,hash(strHash(p.id),d,31));S.satchel[item]=(S.satchel[item]||0)+1;addXP(12,'Gathering');
+    res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>You took <b>${item}</b>. It's in your satchel.</p>`;addLog(`Gathered ${item} at ${label(p)}`)}
+  else if(c==='learn'){const i=v.li||0,pool=p.lore||KIND_LORE[p.kind]||[];let line;if(i<pool.length)line=pool[i];else{line=LORE[S.loreIdx%LORE.length];S.loreIdx++}v.li=i+1;
+    if(!S.learned.includes(line))S.learned.push(line);addXP(15,'Learning');res=`<p class="lore">${line}</p>`;addLog(`Learned something at ${label(p)}`)}
+  else if(c==='befriend'){const n=Math.min(5,(S.bonds[key]||0)+1);S.bonds[key]=n;addXP(10,'Friendship');res=`<p><b>${who}</b> ${FRIEND[n]} <span class="hearts">${hearts(n)}</span></p>`;addLog(`Sat with ${who} (${n}/5)`)}
+  else if(c==='lookout'){revealAround(p.x,p.y,230,true);addXP(30,'Surveys');res='<p>The streets below fill in on your map.</p>';addLog(`Surveyed from ${label(p)}`);dirty=true}
+  v.used=d;v.result=res;chime('find');save();refreshSheet();ui()}
+function resolveDrift(p){if(p.done)return;const [a,b]=[strHash(p.id),3];let res='';
+  if(p.dtype==='shimmer'){const line=LORE[S.loreIdx%LORE.length];S.loreIdx++;if(!S.learned.includes(line))S.learned.push(line);res=`<p>The street goes quiet for a moment, and you understand something.</p><p class="lore">${line}</p>`}
+  else if(p.dtype==='courier'){const cat=pick(Object.keys(CATS),hash(a,b,5)),item=pick(CATS[cat].items,hash(a,b,6));S.satchel[item]=(S.satchel[item]||0)+1;S.bonds.Kip=Math.min(5,(S.bonds.Kip||0)+1);res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>Inside: <b>${item}</b>, and a note in Kip's handwriting: "For the Scout. Don't ask."</p>`}
+  else if(p.dtype==='familiar'){const n=seeCritter(a,b,true);res=`<p>A <b>${n}</b> lets you look at it for a long moment before it goes. It's in your Bestiary.</p>`}
+  else{const [n,role,line]=pick(CAST,hash(a,b,7));S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1);res=`<div class="npc"><b>${n}, ${role}</b><p>${line}</p></div>`}
+  p.done=1;p.result=res;addXP(25,'Drifts');addLog(`Followed a drift: ${p.name}`);chime('find');save();refreshSheet();ui()}
+function renderPOI(p,fresh){const d=dayIndex(),[who,role]=resident(p),bond=S.bonds[bondKey(p)]||0,first=fresh&&p.kind!=='hearth'?` · first visit +${p.kind==='landmark'?25:10} XP`:'';
+  const npc=line=>`<div class="npc"><b>${who}, ${role} <span class="hearts">${hearts(bond)}</span></b><p>${line}</p></div>`;
+  if(p.kind==='hearth'){const ch=CHAPTERS.filter(c=>level()>=c.lvl).pop(),owned=Object.keys(S.owned).length;
+    return `<div class="eyebrow">Home</div><h2>Your place</h2><p class="muted">Bramble is asleep on the windowsill, which means the street is quiet.${owned?` You hold ${owned} hexes of territory.`:''}</p>
+    <div class="npc"><b>Note from Maren</b><p>${ch.m}</p></div><h3>From the Guild board</h3>${makeOffers(p).map(offerHTML).join('')}
+    <div class="npc"><b>Oriel, the Guild's physio</b><p>${orielLine(S.lastPain)}</p></div>`}
+  if(p.kind==='drift')return `<div class="eyebrow">Today's drift · gone tomorrow</div><h2>${p.name}</h2><p class="muted">${DRIFTS[p.dtype].desc}</p>
+    ${p.done?`<div class="card">${p.result}</div>`:`<div class="choices"><button class="choice" data-act="drift" data-id="${p.id}"><b>${DRIFTS[p.dtype].act}</b><span>+25 XP</span></button></div>`}`;
+  if(p.kind==='landmark')return `<div class="eyebrow">${p.name}${first}</div><h2>${p.build}</h2><p class="muted">${p.blurb}</p>${npc(GREETB[bond])}${choicesHTML(p)}`;
+  if(p.osm){const K=OSMKIND[p.kind];return `<div class="eyebrow">${K.label} · real place${first}</div><h2>${p.name}</h2><p class="muted">${K.desc}</p>${npc(bond?GREETB[bond]:pick(GREET,hash(strHash(p.id),d,4)))}${choicesHTML(p)}${p.kind==='hearthkeeper'?`<h3>Errands</h3>${makeOffers(p).map(offerHTML).join('')}`:''}`}
+  if(p.kind==='outpost')return `<div class="eyebrow">Waystation${first}</div><h2>${p.name}</h2>${npc(pick(GREET,hash(p.q,p.r,d)))}${choicesHTML(p)}<h3>Errands</h3>${makeOffers(p).map(offerHTML).join('')}`;
+  const desc={shrine:'The air is a degree colder here, and your phone loses a bar of signal.',cache:'A Courier Union drop box, painted to look like a utility cabinet.',lookout:'A high spot with a long view.'}[p.kind];
+  return `<div class="eyebrow">${p.kind==='shrine'?'Threshold':p.kind==='cache'?'Cache':'Lookout'}${first}</div><h2>${p.name}</h2><p class="muted">${desc}</p>${npc(GREETB[bond])}${choicesHTML(p)}`}
+function orielLine(p){if(p==null)return '"Tell me how the knee feels after each walk. I\'ll keep your pace honest."';
+  if(p<=2)return '"A quiet knee. Good. Keep the steps even and the plan will stretch the road next week."';
+  if(p<=4)return '"Some grumbling from the joint is normal. Ice, elevate, and hold this pace for now."';
+  return '"That\'s too loud. The plan holds where it is. Rest counts as training today, and talk to your physio if it stays sore."'}
+
+/* ---------- sheets ---------- */
+let sheetRender=null;
+function openSheet(fn){sheetRender=fn;$('sheetBody').innerHTML=fn();$('sheet').hidden=false;$('sheet').scrollTop=0}
+function refreshSheet(){if(sheetRender&&!$('sheet').hidden)$('sheetBody').innerHTML=sheetRender()}
+function closeSheet(){$('sheet').hidden=true;sheetRender=null}
+
+function renderIntro(){return `<div class="eyebrow">The Wayfarer's Guild · Chapter one</div><h2>${CHAPTERS[0].t}</h2>
+  <p>${CHAPTERS[0].p}</p>
+  <div class="lines"><div><span>Walk into the fog to lift it</span><span>+4 / hex</span></div><div><span>Walk a loop: everything inside is yours</span><span>+5 / hex</span></div><div><span>Find a real place or landmark</span><span>+10 to +30</span></div><div><span>Every 8 m walked</span><span>+1</span></div><div><span>Every minute on foot</span><span>+2</span></div></div>
+  <p class="muted">The fog stays off a street for ${CLEAR_DAYS} days, then settles back over the next ${FADE_DAYS}. Territory you've claimed is yours for good, and while it's clear it gathers things for you each day. Each morning, three drifts appear somewhere near home, sized to today's walk.</p>
+  <h3>Where is home?</h3>
+  <div class="row"><button class="btn solid" data-act="begin" data-mode="gps">Use my location as home</button><button class="btn" data-act="begin" data-mode="sim">Try it with simulated walking</button></div>
+  <p class="note">"Use my location" sets home where you're standing and tracks your real walks. Simulated walking starts you in the Mission: tap the map to walk at ${S.simSpeed}× speed. You can move home later in Dispatch.</p>`}
+
+function renderSummary(o,entry){const br=Object.entries(o.br).sort((a,b)=>b[1]-a[1]);
+  return `<div class="eyebrow">Back home</div><h2>Outing complete</h2>
+  <div class="big"><div><b>${(o.m/1000).toFixed(2)}</b><span>kilometres</span></div><div><b>${Math.round(o.min)}</b><span>minutes on foot</span></div><div><b>${Math.round(o.gain)}</b><span>metres climbed</span></div><div><b>${o.cells}</b><span>new hexes · ${o.renew} cleared again</span></div></div>
+  <h3>Experience · ${o.xp} XP</h3><div class="lines">${br.map(([k,v])=>`<div><span>${k}</span><span>+${v}</span></div>`).join('')||'<div><span>Nothing yet</span><span>0</span></div>'}</div>
+  <h3>Knee check-in</h3>
+  <div id="checkin">${entry.pain==null?`<p class="muted">How does the knee feel right now? Oriel uses this to decide whether next week's goal grows or holds.</p>
+  <div class="field"><label for="painIn">Pain or discomfort: <b class="mono" id="painVal">2</b> / 10</label><input id="painIn" type="range" min="0" max="10" value="2"><div class="pain"><span>none</span><span>moderate</span><span>severe</span></div></div>
+  <button class="btn solid" data-act="pain">Save check-in</button>`:`<div class="npc"><b>Oriel, the Guild's physio</b><p>${orielLine(entry.pain)}</p></div>`}</div>`}
+
+function renderLogbook(){const L=level(),chs=CHAPTERS.filter(c=>L>=c.lvl).reverse(),next=CHAPTERS.find(c=>c.lvl>L),seen=CRITTERS.filter(c=>S.bestiary[c[0]]).length;ensureDrifts();
+  return `<div class="eyebrow">The Scout's Folio</div><h2>Logbook &amp; Bestiary</h2>
+  <h3>Today's drifts</h3><div class="lines">${S.drifts.map(dr=>`<div><span>${dr.name}</span><span>${dr.done?'followed':Math.round(Math.hypot(dr.x-S.player.x,dr.y-S.player.y))+' m away'}</span></div>`).join('')}</div>
+  <h3>Errands · ${S.quests.length}/4</h3>${S.quests.length?S.quests.map(questHTML).join(''):'<p class="muted">No errands yet. Check the Guild board at home, or ask a Hearthkeeper.</p>'}
+  <h3>Logbook</h3>${S.logbook.length?`<div class="lines">${S.logbook.slice(0,14).map(e=>`<div><span>${e.t}</span><span>${dateLabel(e.d).split(',')[0]}</span></div>`).join('')}</div>`:'<p class="muted">Your walks will be written here.</p>'}
+  <h3>Bestiary · ${seen}/${CRITTERS.length}</h3><div class="dex">${CRITTERS.map(([n,b])=>S.bestiary[n]?`<div><b>${n}</b>${b}<br><span class="muted">Seen ${S.bestiary[n]}×</span></div>`:'<div class="unk"><b>???</b>Not seen yet</div>').join('')}</div>
+  <h3>The story so far</h3>${chs.map((c,i)=>`<details ${i===0?'open':''}><summary>${c.t}</summary><p>${c.p}</p></details>`).join('')}
+  ${next?`<p class="muted" style="margin-top:8px">Next chapter at level ${next.lvl}.</p>`:''}
+  <h3>Things you've learned · ${S.learned.length}</h3>${S.learned.length?S.learned.slice().reverse().map(l=>`<p class="lore">${l}</p>`).join(''):'<p class="muted">Choose "Ask about this place" somewhere to start.</p>'}`}
+
+function renderSatchel(){const L=level(),b=xpFor(L+1);let held=0;for(const k in S.cells)if(clarity(S.cells[k])>=.5)held++;
+  const at=(n,v,u,fmt)=>{const r=rank(v,u),nx=u*r*r;return `<div class="attr"><b>${n}</b><span class="r">${r}</span><div class="bar"><i style="width:${Math.min(100,(v-u*(r-1)*(r-1))/(nx-u*(r-1)*(r-1))*100)}%"></i></div><small>${fmt(v)} · next rank at ${fmt(nx)}</small></div>`};
+  const friends=Object.entries(S.bonds).sort((a,b)=>b[1]-a[1]),lmFound=LANDMARKS.filter(l=>S.discovered[l.id]).length,owned=Object.keys(S.owned),tended=owned.filter(k=>clarity(S.cells[k])>=.5).length;
+  const bag=Object.keys(CATS).map(k=>{const items=CATS[k].items.filter(i=>S.satchel[i]);return items.length?`<div class="lines">${items.map(i=>`<div><span><span class="dot" style="background:${CATS[k].color}"></span>${i}</span><span>×${S.satchel[i]}</span></div>`).join('')}</div>`:''}).join('');
+  return `<div class="eyebrow">Level ${L} · ${Math.floor(S.xp)} XP · ${b-Math.floor(S.xp)} to level ${L+1}</div><h2>Satchel &amp; Stats</h2><p class="muted">${titleFor(L)}, Wayfarer's Guild</p>
+  <h3>Territory</h3><div class="big"><div><b>${owned.length}</b><span>hexes yours</span></div><div><b>${tended}</b><span>clear enough to gather (about ${tended?Math.min(6,Math.ceil(tended/15)):0} finds a day)</span></div></div>
+  <h3>Stats</h3>
+  ${at('Stride',S.tot.m/1000,.5,v=>v.toFixed(1)+' km')}
+  ${at('Stamina',S.tot.min,20,v=>Math.round(v)+' min')}
+  ${at('Ascent',S.tot.gain,25,v=>Math.round(v)+' m')}
+  ${at('Cartography',S.tot.cells,40,v=>Math.round(v)+' hexes')}
+  ${at('Lore',S.learned.length,1,v=>v+' learned')}
+  <div class="big"><div><b>${lmFound}/${LANDMARKS.length}</b><span>story landmarks found</span></div><div><b>${Object.keys(S.discovered).length}</b><span>places found in all</span></div></div>
+  <h3>People</h3>${friends.length?`<div class="lines">${friends.map(([n,v])=>`<div><span>${n}</span><span class="hearts">${hearts(v)}</span></div>`).join('')}</div>`:'<p class="muted">Sit with someone somewhere to get to know them.</p>'}
+  <h3>Satchel</h3>${bag||'<p class="muted">Empty for now. Parks give flora, Hearthkeepers give provisions, archives give knowledge, the shore gives sea finds, hilltops give sky finds, murals give pigment.</p>'}`}
+
+function streak(){let d=dayIndex(),n=0;const ok=r=>r&&(r.min>=3||r.rest);if(!ok(S.days[d]))d--;while(ok(S.days[d])){n++;d--}return n}
+function dateLabel(d){const t=new Date(d*DAY+12*3600e3);return t.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}
+function renderPlan(){const td=today(),g=goalMin(),di=dayIndex();let wk='';
+  for(let i=6;i>=0;i--){const d=di-i,r=S.days[d],c=r&&r.min>=3?'walk':r&&r.rest?'rest':'',lab=new Date(d*DAY+12*3600e3).toLocaleDateString(undefined,{weekday:'narrow'});
+    wk+=`<div class="${i===0?'today':''}"><i class="${c}">${r&&r.min>=1?Math.round(r.min):r&&r.rest?'rest':''}</i>${lab}</div>`}
+  const canRest=!td.rest&&td.min<3&&!S.outing,o=dispatch(),ov=Math.min(o.target,td[o.f]||0);
+  return `<div class="eyebrow">Dispatch · ${dateLabel(di)}</div><h2>Today: ${Math.round(td.min)} of ${g} min</h2>
+  <p class="muted">Streak: <b class="mono">${streak()}</b> day${streak()===1?'':'s'}. Walks and rest days both count.</p>
+  <div class="card qcard">${clock(ov/o.target,4)}<div class="top"><b>${o.label}</b><span class="xp">+${o.reward} XP</span></div><div class="from">Today's dispatch from Maren</div><div class="from mono">${td.dispatch?'Done for today':`${ov} / ${o.target}`}</div></div>
+  <div class="week">${wk}</div>
+  <div class="row"><button class="btn" data-act="rest" ${canRest?'':'disabled'}>${td.rest?'Resting today':'Take a rest day (+20 XP)'}</button></div>
+  <p class="note">Your daily goal grows by ${S.plan.ramp}% each week you walk at least twice and every knee check-in stays under 5. A sore week holds the goal where it is. This is a nudge, not medical advice: your surgeon's and physio's limits come first.</p>
+  <h3>Home</h3>
+  <p class="muted">Drifts appear around home each day, and home is where Bramble waits.</p>
+  <div class="row"><button class="btn" data-act="homehere">${S.mode==='gps'?'Make where I\'m standing my home':'Make this spot my home'}</button></div>
+  <h3>Settings</h3>
+  <div class="field"><label for="baseIn">Starting daily goal (minutes)</label><input id="baseIn" type="number" min="3" max="120" value="${S.plan.baseMin}"></div>
+  <div class="field"><label for="rampIn">Weekly increase (%)</label><input id="rampIn" type="number" min="0" max="25" value="${S.plan.ramp}"></div>
+  <div class="field"><label for="modeIn">Movement</label><select id="modeIn" ${S.outing?'disabled':''}><option value="sim" ${S.mode==='sim'?'selected':''}>Simulated (tap the map)</option><option value="gps" ${S.mode==='gps'?'selected':''}>My location (GPS)</option></select></div>
+  <div class="field"><label for="speedIn">Simulated walking speed</label><select id="speedIn">${[1,4,8,20].map(s=>`<option value="${s}" ${S.simSpeed===s?'selected':''}>${s}× ${s===1?'(real pace)':''}</option>`).join('')}</select></div>
+  <div class="field"><label><input id="soundIn" type="checkbox" ${S.sound!==false?'checked':''}> Chimes and buzzes when something happens</label></div>
+  <h3>Back up your progress</h3>
+  <p class="muted">Progress lives only on this phone. Now and then, copy a save code and paste it somewhere safe, like a note or an email to yourself.</p>
+  <div class="row"><button class="btn" data-act="export">Copy save code</button><button class="btn" data-act="import">Restore a save code</button></div>
+  <div class="field" id="saveBox" hidden><label for="saveText">Save code</label><textarea id="saveText" rows="4"></textarea><div class="row"><button class="btn solid" data-act="doimport" id="doImport" hidden>Restore this save</button></div></div>
+  <h3>Watch the fog return</h3>
+  <p class="muted">Skip ahead to see the fog settle back in, and territory gather. Day ${Math.round(S.timeOffset/DAY)} of skipped time.</p>
+  <div class="row"><button class="btn" data-act="skip" data-n="1">Pass 1 day</button><button class="btn" data-act="skip" data-n="5">Pass 5 days</button></div>
+  <h3>Start over</h3><div class="row"><button class="btn" data-act="reset" id="resetBtn">Erase all progress</button></div>`}
+
+/* ---------- UI ---------- */
+function toast(html){const t=document.createElement('div');t.className='toast';t.innerHTML=html;const box=$('toasts');box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),3400)}
+function ui(){const L=level(),a=xpFor(L),b=xpFor(L+1);$('lvlNum').textContent=L;$('title').textContent=titleFor(L);
+  $('xpText').textContent=`${Math.floor(S.xp-a)} / ${b-a} XP`;$('xpBar').style.width=Math.min(100,(S.xp-a)/(b-a)*100)+'%';
+  const td=S.days[dayIndex()],m=td?td.min:0,g=goalMin();$('goalText').textContent=`${Math.floor(m)}/${g}`;$('goalArc').setAttribute('stroke-dashoffset',131.95*(1-Math.min(1,m/g)));
+  $('goalArc').setAttribute('stroke',m>=g?'#4f7f2e':'#8f5c12');
+  const o=S.outing;$('stats').hidden=!o;$('goBtn').textContent=o?'End outing':'Set out';$('goBtn').classList.toggle('on',!!o);
+  if(o){$('sDist').textContent=(o.m/1000).toFixed(2);$('sTime').textContent=Math.floor(o.min);$('sGain').textContent=Math.round(o.gain);$('sCells').textContent=o.cells;
+    $('sMode').textContent=S.mode==='sim'?`simulated · ${S.simSpeed}× · tap to walk`:gpsAcc==null?'GPS · finding you…':`GPS ±${gpsAcc} m · walk to move`}
+  $('attrib').hidden=!tilesOk}
+
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act],[data-tab]');if(!el)return;const act=el.dataset.act,tab=el.dataset.tab;
+  if(tab){openSheet(tab==='journal'?renderLogbook:tab==='hero'?renderSatchel:renderPlan);return}
+  if(act==='close')return closeSheet();
+  if(act==='begin'){S.intro=false;S.mode=el.dataset.mode;closeSheet();startOuting();return}
+  if(act==='homehere'){homeHere();closeSheet();return}
+  if(act==='accept'){const q=offers.get(el.dataset.id);if(q&&S.quests.length<4&&!S.quests.some(x=>x.id===q.id)){S.quests.push({...q});toast(`Errand accepted: ${q.title}`);save();refreshSheet()}return}
+  if(act==='choose'){const p=placeById(el.dataset.id);if(p)choose(p,el.dataset.c);return}
+  if(act==='drift'){const p=placeById(el.dataset.id);if(p)resolveDrift(p);return}
+  if(act==='pain'){const val=+$('painIn').value,e0=S.log[0];if(e0){e0.pain=val}const td=today();td.pain=Math.max(td.pain==null?0:td.pain,val);S.lastPain=val;save();refreshSheet()}
+  if(act==='rest'){const td=today();if(!td.rest&&td.min<3){td.rest=true;addXP(20,'Rest');toast('A rest day at home. Streak kept.');addLog('Took a rest day');save();refreshSheet();ui()}}
+  if(act==='skip'){S.timeOffset+=DAY*(+el.dataset.n);syncPlan();dailyYield();ensureDrifts();toast(`${el.dataset.n} day${el.dataset.n>1?'s':''} pass. The fog settles over quiet streets.`);dirty=true;save();refreshSheet();ui()}
+  if(act==='export'){let code='';try{code=btoa(unescape(encodeURIComponent(JSON.stringify(S))))}catch(e){}
+    $('saveBox').hidden=false;$('doImport').hidden=true;const ta=$('saveText');ta.value=code;
+    const done=()=>toast('Save code copied. Paste it somewhere safe.');
+    try{navigator.clipboard.writeText(code).then(done,()=>{ta.select();toast('Copy the selected save code below.')})}catch(e){ta.select();toast('Copy the selected save code below.')}return}
+  if(act==='import'){$('saveBox').hidden=false;$('doImport').hidden=false;$('saveText').value='';$('saveText').focus();return}
+  if(act==='doimport'){let s=null;try{s=JSON.parse(decodeURIComponent(escape(atob($('saveText').value.trim()))))}catch(e){}
+    if(!s||s.v!==1||!s.cells){toast('That save code did not work. Check you copied all of it.');return}
+    S=Object.assign(newState(),s);S.outing=null;dest=null;stopGPS();poiCache.clear();colCache.clear();save();closeSheet();cam.x=S.player.x;cam.y=S.player.y;follow=true;ui();toast('Save restored');return}
+  if(act==='reset'){if(el.dataset.armed){try{localStorage.removeItem(LS)}catch(e){}S=newState();S.plan.startDay=dayIndex();poiCache.clear();colCache.clear();revealAround(0,0,95,false);dest=null;stopGPS();closeSheet();cam.x=0;cam.y=0;follow=true;ui();save();openSheet(renderIntro)}else{el.dataset.armed='1';el.textContent='Tap again to erase everything'}}
+});
+document.addEventListener('input',e=>{if(e.target.id==='painIn')$('painVal').textContent=e.target.value});
+document.addEventListener('change',e=>{const id=e.target.id,v=e.target.value;
+  if(id==='baseIn'){S.plan.baseMin=Math.max(3,Math.min(120,+v||12))}
+  else if(id==='rampIn'){S.plan.ramp=Math.max(0,Math.min(25,+v||0))}
+  else if(id==='modeIn'){S.mode=v}
+  else if(id==='speedIn'){S.simSpeed=+v}
+  else if(id==='soundIn'){S.sound=e.target.checked;if(S.sound)chime('find')}
+  else return;save();ui()});
+$('goBtn').onclick=()=>{S.outing?endOuting():startOuting()};
+$('lvlBtn').onclick=()=>openSheet(renderSatchel);$('goalBtn').onclick=()=>openSheet(renderPlan);
+$('interactBtn').onclick=()=>{if(nearPOI)visit(nearPOI)};
+
+/* ---------- map ---------- */
+let W=0,H=0,DPR=1,scale=1.5,follow=true,dirty=true,nearPOI=null,tilesOk=false;
+const cam={x:S.player.x,y:S.player.y};
+const FP=4,fogC=document.createElement('canvas'),fctx=fogC.getContext('2d');
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;fogC.width=Math.ceil(W/FP);fogC.height=Math.ceil(H/FP);dirty=true}
+addEventListener('resize',resize);resize();
+const w2s=(x,y)=>[(x-cam.x)*scale+W/2,(y-cam.y)*scale+H/2];
+const s2w=(sx,sy)=>[(sx-W/2)/scale+cam.x,(sy-H/2)/scale+cam.y];
+$('zin').onclick=()=>{scale=Math.min(4,scale*1.3)};$('zout').onclick=()=>{scale=Math.max(.35,scale/1.3)};$('recenter').onclick=()=>{follow=true};
+cv.addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(.35,Math.min(4,scale*(e.deltaY<0?1.1:1/1.1)))},{passive:false});
+let down=null;
+cv.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y,moved:false};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!down)return;const dx=e.clientX-down.x,dy=e.clientY-down.y;if(!down.moved&&Math.hypot(dx,dy)>8){down.moved=true;follow=false}
+  if(down.moved){cam.x=down.cx-dx/scale;cam.y=down.cy-dy/scale}});
+cv.addEventListener('pointerup',e=>{if(down&&!down.moved)onTap(e.clientX,e.clientY);down=null});
+cv.addEventListener('pointercancel',()=>{down=null});
+const reach=p=>p.kind==='landmark'?p.r:p.osm?55:RANGE;
+function visibleThings(){const P=S.player,list=[];for(const l of LANDMARKS)if(S.discovered[l.id])list.push(l);for(const p of OSMP)if(S.discovered[p.id])list.push(p);for(const d of S.drifts||[])list.push(d);return list}
+function onTap(sx,sy){if(!$('sheet').hidden){closeSheet();return}
+  const [wx,wy]=s2w(sx,sy),[tq,tr]=toHex(wx,wy);let hit=null,hd=30;
+  for(let dq=-1;dq<=1;dq++)for(let dr=-1;dr<=1;dr++){const p=poiAt(tq+dq,tr+dr);if(p&&clarity(S.cells[p.id])>0){const [px,py]=w2s(p.x,p.y),d=Math.hypot(px-sx,py-sy);if(d<hd){hd=d;hit=p}}}
+  for(const p of visibleThings()){const [px,py]=w2s(p.x,p.y),d=Math.hypot(px-sx,py-sy);if(d<hd){hd=d;hit=p}}
+  const P=S.player;
+  if(hit&&Math.hypot(hit.x-P.x,hit.y-P.y)<=reach(hit)){visit(hit);return}
+  if(!S.outing){toast(hit?`${label(hit)} is ${Math.round(Math.hypot(hit.x-P.x,hit.y-P.y))} m away. Set out to walk there.`:'Set out on an outing to start walking.');return}
+  if(S.mode!=='sim'){toast('In GPS mode you move by walking for real.');return}
+  dest=hit?{x:hit.x,y:hit.y}:{x:wx,y:wy};follow=true}
+
+const colCache=new Map();
+function terrain(q,r){const k=q+','+r;let c=colCache.get(k);if(c)return c;const [x,y]=hexCenter(q,r),[hq,hr]=toHex(S.hearth.x,S.hearth.y);let h=height01(x,y);if(hexDist(q,r,hq,hr)<=3)h=Math.max(h,.34);
+  const j=(hash(q,r,3)-.5)*5;let water=false;
+  if(h<WATER){c=`hsl(200,30%,${58+j*.6}%)`;water=true}else if(h<.45)c=`hsl(95,22%,${58+h*8+j}%)`;else if(h<.6)c=`hsl(75,22%,${61+h*6+j}%)`;else if(h<.72)c=`hsl(45,22%,${64+j}%)`;else c=`hsl(30,10%,${64+(h-.72)*30+j}%)`;
+  const o={c,water,h,trees:!water&&h<.6&&hash(q,r,4)<.4};colCache.set(k,o);return o}
+const CORN=[...Array(6)].map((_,i)=>{const a=Math.PI/180*(60*i-30);return [Math.cos(a),Math.sin(a)]});
+function hexPath(sx,sy,s){ctx.beginPath();for(let i=0;i<6;i++){const x=sx+CORN[i][0]*s,y=sy+CORN[i][1]*s;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* fog: a chunky low-res layer of real-looking fog, with soft holes where you've walked */
+const soft=document.createElement('canvas');soft.width=soft.height=64;{const g=soft.getContext('2d'),gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'#fff');gr.addColorStop(.5,'#fff');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64)}
+const noise=document.createElement('canvas');noise.width=noise.height=64;{const g=noise.getContext('2d'),im=g.createImageData(64,64);
+  for(let y=0;y<64;y++)for(let x=0;x<64;x++){const v=vnoise(x/16,y/16,91,4)*.65+vnoise(x/8,y/8,92,8)*.35,i=(y*64+x)*4;im.data[i]=im.data[i+1]=im.data[i+2]=v>.5?255:150;im.data[i+3]=Math.round(Math.abs(v-.5)*2*255)}g.putImageData(im,0,0)}
+let noisePat=null;
+function drawFog(t){const fw=fogC.width,fh=fogC.height,f=fctx;f.globalCompositeOperation='source-over';f.clearRect(0,0,fw,fh);
+  f.fillStyle='rgba(222,227,231,.93)';f.fillRect(0,0,fw,fh);
+  noisePat=noisePat||f.createPattern(noise,'repeat');
+  for(const [k,sp,al] of [[3,.006,.5],[5,-.004,.35]]){f.save();const ox=(-cam.x*scale/FP+(reduce?0:t*sp))/k,oy=(-cam.y*scale/FP)/k;f.scale(k,k);f.translate(ox%64,oy%64);f.globalAlpha=al;f.fillStyle=noisePat;f.fillRect(-64,-64,fw/k+128,fh/k+128);f.restore()}
+  f.globalCompositeOperation='destination-out';
+  const [x0,y0]=s2w(0,0),[x1,y1]=s2w(W,H),rr=R*scale*2.7/FP;
+  const rmin=Math.floor(y0/(R*1.5))-2,rmax=Math.ceil(y1/(R*1.5))+2;
+  for(let r=rmin;r<=rmax;r++){const qmin=Math.floor(x0/(R*SQ3)-r/2)-2,qmax=Math.ceil(x1/(R*SQ3)-r/2)+2;
+    for(let q=qmin;q<=qmax;q++){const c=clarity(S.cells[q+','+r]);if(c<=0)continue;const [hx,hy]=hexCenter(q,r),[sx,sy]=w2s(hx,hy);f.globalAlpha=Math.min(1,c*1.05);f.drawImage(soft,sx/FP-rr/2,sy/FP-rr/2,rr,rr)}}
+  const [px,py]=w2s(S.player.x,S.player.y),lr=REVEAL*2.2*scale/FP;f.globalAlpha=1;f.drawImage(soft,px/FP-lr/2,py/FP-lr/2,lr,lr);
+  f.globalAlpha=1;f.globalCompositeOperation='source-over';
+  ctx.imageSmoothingEnabled=false;ctx.drawImage(fogC,0,0,fw*FP,fh*FP);ctx.imageSmoothingEnabled=true}
+
+/* pixel banner, LucasArts-dialogue style */
+function banner(x,y,text,col){ctx.font='600 12px "Pixelify Sans","Courier New",monospace';const w=Math.round(ctx.measureText(text).width+12),bx=Math.round(x-w/2),by=Math.round(y-11);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(bx+2,by+2,w,17);ctx.fillStyle='#1d1a2b';ctx.fillRect(bx,by,w,17);ctx.fillStyle=col||'#f3e6c8';ctx.textAlign='center';ctx.fillText(text,Math.round(x),by+12)}
+
+function draw(t){ctx.setTransform(DPR,0,0,DPR,0,0);ctx.imageSmoothingEnabled=true;
+  ctx.fillStyle='#e7e2d8';ctx.fillRect(0,0,W,H);
+  const [x0,y0]=s2w(0,0),[x1,y1]=s2w(W,H),s=R*scale+.6;
+  drawTiles();const real=tilesOk,pois=[];
+  const rmin=Math.floor(y0/(R*1.5))-1,rmax=Math.ceil(y1/(R*1.5))+1;
+  for(let r=rmin;r<=rmax;r++){const qmin=Math.floor(x0/(R*SQ3)-r/2)-1,qmax=Math.ceil(x1/(R*SQ3)-r/2)+1;
+    for(let q=qmin;q<=qmax;q++){const k=q+','+r,ts=S.cells[k],c=clarity(ts);const [hx,hy]=hexCenter(q,r),[sx,sy]=w2s(hx,hy);
+      if(!real&&ts){const tr=terrain(q,r);hexPath(sx,sy,s);ctx.fillStyle=tr.c;ctx.fill();
+        if(tr.trees&&scale>.8){ctx.fillStyle='rgba(58,78,38,.6)';for(let i=0;i<3;i++){const ox=Math.round((hash(q,r,20+i)-.5)*R*1.1*scale),oy=Math.round((hash(q,r,30+i)-.5)*R*1.1*scale),u=Math.max(2,Math.round(scale*1.5));ctx.fillRect(sx+ox-u,sy+oy-u,u*2,u*2);ctx.fillRect(sx+ox-u/2,sy+oy+u,u,u)}}}
+      if(S.owned[k]){hexPath(sx,sy,s);ctx.fillStyle='rgba(217,164,58,.16)';ctx.fill();ctx.strokeStyle='rgba(166,61,47,.85)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+        for(let i=0;i<6;i++){const [dq,dr]=NB[i];if(S.owned[(q+dq)+','+(r+dr)])continue;const a=CORN[(6-i)%6],b=CORN[(7-i)%6];ctx.beginPath();ctx.moveTo(sx+a[0]*s,sy+a[1]*s);ctx.lineTo(sx+b[0]*s,sy+b[1]*s);ctx.stroke()}ctx.setLineDash([])}
+      const p=poiAt(q,r);if(p&&c>0)pois.push([p,sx,sy,c])}}
+  // footprints, left-right, every 7 m along today's route
+  const o=S.outing;if(o&&o.trail.length>0){const pts=[...o.trail,[S.player.x,S.player.y]],u=2;let acc=0,side=1;ctx.fillStyle='rgba(90,40,20,.75)';
+    for(let i=1;i<pts.length;i++){const [ax,ay]=pts[i-1],[bx,by]=pts[i],seg=Math.hypot(bx-ax,by-ay);if(!seg)continue;const nx=-(by-ay)/seg,ny=(bx-ax)/seg;let d=7-acc;
+      while(d<=seg){const [sx,sy]=w2s(ax+(bx-ax)*d/seg,ay+(by-ay)*d/seg);ctx.fillRect(Math.round(sx+nx*side*3)-u,Math.round(sy+ny*side*3)-u,u*2,u*2);side=-side;d+=7}
+      acc=seg-(d-7)}}
+  drawFog(t);
+  if(dest){const [a,b]=w2s(dest.x,dest.y);ctx.fillStyle='#a63d2f';for(const [dx,dy] of [[-8,0],[8,0],[0,-8],[0,8]])ctx.fillRect(Math.round(a+dx)-2,Math.round(b+dy)-2,4,4)}
+  // places sit on top of the fog once known
+  for(const [p,sx,sy,c] of pois)drawPOI(p,sx,sy,c,t);
+  const P=S.player;
+  for(const p of OSMP){if(!S.discovered[p.id])continue;const [sx,sy]=w2s(p.x,p.y);if(sx<-60||sy<-60||sx>W+60||sy>H+60)continue;drawPOI(p,sx,sy,1,t)}
+  for(const l of LANDMARKS){const [sx,sy]=w2s(l.x,l.y);if(sx<-80||sy<-80||sx>W+80||sy>H+80)continue;
+    if(S.discovered[l.id])drawPOI(l,sx,sy,1,t);
+    else if(Math.hypot(l.x-P.x,l.y-P.y)<700)drawSprite('mystery',sx,sy,3,.85)}
+  for(const d of S.drifts||[]){const [sx,sy]=w2s(d.x,d.y);if(sx<-60||sy<-60||sx>W+60||sy>H+60)continue;
+    const bob=reduce?0:Math.round(Math.sin(t*.004+d.x)*2);drawSprite('drift',sx,sy+bob,3,d.done?.4:1);if(!d.done&&(scale>.8||Math.hypot(d.x-P.x,d.y-P.y)<300))banner(sx,sy+30,d.name,'#ffd76a')}
+  // you: a little pixel Scout with a lantern
+  const [px,py]=w2s(P.x,P.y),gr=REVEAL*scale,g=ctx.createRadialGradient(px,py,0,px,py,gr);
+  g.addColorStop(0,'rgba(255,214,120,.22)');g.addColorStop(1,'rgba(255,214,120,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,gr,0,7);ctx.fill();
+  const moving=!!dest||(S.mode==='gps'&&S.outing),bob=moving&&!reduce?Math.round(Math.sin(t*.012)):0;
+  ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(Math.round(px)-9,Math.round(py)+16,18,4);drawSprite('scout',px,py+bob,3,1);
+  banner(px,py+34,'You','#ffd76a')}
+
+/* real street map under everything, drawn chunky: tiles one zoom level out, scaled up without smoothing */
+const tiles=new Map();
+const t2lon=(x,n)=>x/n*360-180,t2lat=(y,n)=>Math.atan(Math.sinh(Math.PI-2*Math.PI*y/n))/RAD;
+function drawTiles(){const z=Math.max(11,Math.min(18,Math.round(Math.log2(156543.03*Math.cos(ORIGIN.lat*RAD)*scale))-1)),n=2**z;
+  if(tiles.size>300)tiles.clear();
+  const [la0,lo0]=w2ll(...s2w(0,0)),[la1,lo1]=w2ll(...s2w(W,H));
+  const tx=lon=>Math.floor((lon+180)/360*n),ty=lat=>Math.floor((1-Math.log(Math.tan(lat*RAD)+1/Math.cos(lat*RAD))/Math.PI)/2*n);
+  const xa=tx(lo0),xb=tx(lo1),ya=ty(la0),yb=ty(la1);if((xb-xa+1)*(yb-ya+1)>60)return;
+  ctx.imageSmoothingEnabled=false;
+  for(let x=xa;x<=xb;x++)for(let y=ya;y<=yb;y++){const key=z+'/'+x+'/'+y;let im=tiles.get(key);
+    if(!im){im=new Image();im.onload=()=>{tilesOk=true;dirty=true};im.src=`https://tile.openstreetmap.org/${key}.png`;tiles.set(key,im)}
+    if(!im.complete||!im.naturalWidth)continue;
+    const [ax,ay]=w2s(...ll2w(t2lat(y,n),t2lon(x,n))),[bx,by]=w2s(...ll2w(t2lat(y+1,n),t2lon(x+1,n)));
+    ctx.filter='saturate(1.1) contrast(1.06)';ctx.drawImage(im,Math.round(ax),Math.round(ay),Math.round(bx)-Math.round(ax)+1,Math.round(by)-Math.round(ay)+1);ctx.filter='none'}
+  ctx.imageSmoothingEnabled=true}
+
+/* pixel sprites: k ink, g accent (gold or the place's colour), r red, p paper, m moss, b water, f skin, n navy */
+const SPRITES={
+  hearth:['....k....','...kgk...','..kgggk..','.kgggggk.','kkkkkkkkk','.kpppppk.','.kpkrkpk.','.kpkrkpk.','.kkkkkkk.'],
+  outpost:['....kr...','....krr..','....k....','..kkkkk..','..kpgpk..','..kpppk..','..kpkpk..','..kpkpk..','.kkkkkkk.'],
+  shrine:['....k....','...kgk...','..kgggk..','...kgk...','...kkk...','..kpppk..','..kpppk..','.kkpppkk.','kkkkkkkkk'],
+  cache:['.........','.kkkkkkk.','kgggggggk','kgggggggk','kkkkgkkkk','kgggkgggk','kgggggggk','kgggggggk','kkkkkkkkk'],
+  lookout:['....kr...','....k....','...kmk...','..kmmmk..','..kmpmk..','.kmmmmmk.','.kmmmmmk.','kmmmmmmmk','kkkkkkkkk'],
+  landmark:['....k....','...kgk...','kkkkgkkkk','kgggggggk','.kgggggk.','..kgggk..','.kggkggk.','.kgk.kgk.','.kk...kk.'],
+  grove:['...kkk...','..kmmmk..','.kmmgmmk.','.kmmmmmk.','..kmmmk..','...kpk...','...kpk...','..kkpkk..','.........'],
+  mural:['kkkkkkkkk','krrgggmmk','krrgggmmk','kmmrrrggk','kmmrrrggk','kgggmmrrk','kkkkkkkkk','...k.k...','..kk.kk..'],
+  archive:['.........','.kkkkkkk.','kpppkpppk','kpggkggpk','kpppkpppk','kpggkggpk','kpppkpppk','.kkkkkkk.','.........'],
+  spring:['....b....','...b.b...','..b...b..','....b....','.kkkbkkk.','.kbbbbbk.','..kkkkk..','...kpk...','..kkkkk..'],
+  hearthkeeper:['..g.g....','...g.g...','.........','kkkkkkk..','kpppppkk.','kpppppk.k','kpppppkk.','.kpppk...','..kkk....'],
+  echo:['.kkkkkkk.','kpppppppk','kpkkkkkpk','kpppppppk','kpkkkkkpk','kpppppppk','.kkkkkkk.','...kgk...','..kkkkk..'],
+  drift:['....g....','....g....','...ggg...','gggg.gggg','...ggg...','....g....','....g....','.........','.........'],
+  mystery:['..kkkkk..','.kpppppk.','kppkkkppk','kpkk.kkpk','....kkpk.','...kppk..','...kkk...','...kpk...','...kkk...'],
+  scout:['...kk...','..kffk..','..kffk..','...kk...','..krrk..','.krrrrkg','.krrrrkg','..krrk..','..knnk..','..knnk..','..kn.nk.','..kk.kk.']};
+const PAL={k:'#2a2233',g:'#d9a43a',r:'#a63d2f',p:'#f3e6c8',m:'#5f8a4a',b:'#4f8fa0',f:'#f0c8a0',n:'#3a4a6a'};
+function drawSprite(name,sx,sy,u,alpha,accent){const sp=SPRITES[name],h=sp.length,w=sp[0].length,x0=Math.round(sx-w*u/2),y0=Math.round(sy-h*u/2);
+  ctx.save();ctx.globalAlpha=alpha==null?1:alpha;
+  ctx.fillStyle='rgba(0,0,0,.28)';for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++)if(sp[yy][xx]!=='.')ctx.fillRect(x0+xx*u+u,y0+yy*u+u,u,u);
+  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){const ch=sp[yy][xx];if(ch==='.')continue;ctx.fillStyle=ch==='g'&&accent?accent:PAL[ch];ctx.fillRect(x0+xx*u,y0+yy*u,u,u)}
+  ctx.restore()}
+function drawPOI(p,sx,sy,c,t){const visited=!!(S.visits[p.id]&&S.visits[p.id].first),lm=p.kind==='landmark',u=lm||scale>1.6?3:2;
+  if(!visited&&!reduce&&Math.floor(t/400)%2===0){ctx.fillStyle='#ffd76a';ctx.fillRect(Math.round(sx)+12,Math.round(sy)-16,3,3)}
+  drawSprite(SPRITES[p.kind]?p.kind:'shrine',sx,sy,u,.45+.55*c,lm?CATS[p.cat].color:p.osm?CATS[catOf(p)].color:null);
+  const P=S.player,near=Math.hypot(p.x-P.x,p.y-P.y)<180;
+  if(lm||p.kind==='hearth'||near||scale>1.4)banner(sx,sy+26,label(p),lm?'#ffd76a':'#f3e6c8')}
+
+function findNear(){const P=S.player,[pq,pr]=toHex(P.x,P.y);let best=null,bd=1e9;
+  for(let dq=-2;dq<=2;dq++)for(let dr=-2;dr<=2;dr++){const p=poiAt(pq+dq,pr+dr);if(!p||!S.cells[p.id])continue;const d=Math.hypot(p.x-P.x,p.y-P.y);if(d<=RANGE&&d<bd){bd=d;best=p}}
+  for(const p of visibleThings()){const d=Math.hypot(p.x-P.x,p.y-P.y);if(d<=reach(p)&&d<bd){bd=d;best=p}}
+  return best}
+
+let last=performance.now(),uiT=0,osmT=0;
+function frame(t){const dt=Math.min(100,t-last);last=t;
+  if(S.mode==='sim'&&S.outing&&dest){const P=S.player,dx=dest.x-P.x,dy=dest.y-P.y,d=Math.hypot(dx,dy),step=WALK*S.simSpeed*dt/1000;
+    if(d<=step){moveTo(dest.x,dest.y,elevM(dest.x,dest.y),dt*S.simSpeed*(step?d/step:0));dest=null}
+    else{const nx=P.x+dx/d*step,ny=P.y+dy/d*step;moveTo(nx,ny,elevM(nx,ny),dt*S.simSpeed)}}
+  if(follow){cam.x+=(S.player.x-cam.x)*.12;cam.y+=(S.player.y-cam.y)*.12}
+  draw(t);
+  if(t-uiT>250){uiT=t;checkDaily();ensureDrifts();ui();
+    if(foundQueue.length){toast(foundQueue.length===1?`Found <em>${foundQueue[0]}</em>`:`Found ${foundQueue.length} places: <em>${foundQueue.slice(0,3).join(', ')}${foundQueue.length>3?'…':''}</em>`);chime('find');foundQueue=[]}
+    const n=findNear();if(n!==nearPOI){nearPOI=n;$('interact').hidden=!n;if(n)$('interactBtn').textContent=n.kind==='drift'?`Investigate: ${n.name}`:`Visit ${label(n)}`}
+    if(t-osmT>5000){osmT=t;dailyYield()}
+    if(t-saveT>3000){saveT=t;save()}}
+  requestAnimationFrame(frame)}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save();
+  else if(S.outing){try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{})}catch(e){}}});
+
+ensureDrifts();ui();
+if(S.intro)openSheet(renderIntro);
+else if(S.outing&&S.mode==='gps')startGPS();
+requestAnimationFrame(frame);
+})();
+</script>
