@@ -16,20 +16,20 @@ Code lives at https://github.com/flailingly/lit-path (public). Commit as flailin
 
 - `lamplighter.html` — the whole game (page content, CSS and one script). Also published as a claude.ai artifact preview.
 - `places.json` — ~2,200 real SF places from OpenStreetMap: `[kind, name, lat, lon]`. Kinds: grove, lookout, mural, archive, spring, hearthkeeper, echo.
-- `lamplighter-phone/` — the deployable folder (generated; do not edit by hand): `index.html`, `places.json`, manifest, icons.
-- `tools/build.ps1` — wraps `lamplighter.html` into `lamplighter-phone/index.html` and writes the manifest.
-- `tools/serve.ps1` — serves `lamplighter-phone/` at http://localhost:8765 for testing.
+- `docs/` — the deployable folder (generated; do not edit by hand): `index.html`, `places.json`, manifest, icons.
+- `tools/build.ps1` — wraps `lamplighter.html` into `docs/index.html` and writes the manifest.
+- `tools/serve.ps1` — serves `docs/` at http://localhost:8765 for testing.
 
 ## Build, test, deploy
 
 ```powershell
-powershell -File tools/build.ps1          # regenerate lamplighter-phone/
+powershell -File tools/build.ps1          # regenerate docs/
 powershell -File tools/serve.ps1          # local test server (leave running)
 ```
 
 Test in the browser pane at mobile size (375x812). Simulated walking: start with "Try it with simulated walking", set speed 20x in Dispatch, tap the map. To fake GPS, override `navigator.geolocation` before tapping "Use my location as home"; keep fake movement under 12 m/s or the jump filter drops it.
 
-Deploy: the owner drags `lamplighter-phone/` onto their Netlify project's Deploys page (Netlify Drop). URL stays the same.
+Deploy: GitHub Pages serves `docs/` from `main` at https://flailingly.github.io/lit-path/. Run the build, commit and push; the site updates in a minute or two. `docs/.nojekyll` keeps GitHub from processing the files.
 
 Preview: `lamplighter.html` is also published as a claude.ai artifact at https://claude.ai/artifact/G2DMEZLacrttTTSs8fcKx2. Update it in place (pass that `url`, and `places.json` in `files`) rather than creating a new artifact. In the artifact viewer, map tiles and GPS are blocked, so it falls back to drawn terrain and simulated walking.
 

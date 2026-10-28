@@ -1,6 +1,6 @@
-# Wraps lamplighter.html into a standalone page in lamplighter-phone/ and writes the web app manifest.
+# Wraps lamplighter.html into a standalone page in docs/ and writes the web app manifest.
 param([string]$Root = (Split-Path $PSScriptRoot -Parent))
-$out = Join-Path $Root 'lamplighter-phone'
+$out = Join-Path $Root 'docs'
 New-Item -ItemType Directory -Force $out | Out-Null
 $head = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#e9dcbc"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Scout''s Folio"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" href="icon-192.png"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style></head><body>'
 $body = [IO.File]::ReadAllText((Join-Path $Root 'lamplighter.html'))

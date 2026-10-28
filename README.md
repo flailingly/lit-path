@@ -19,11 +19,11 @@ This is a personal project, not medical advice. The game only nudges. Your surge
 The game is a single web page: `lamplighter.html`.
 
 ```powershell
-powershell -File tools/build.ps1   # builds the phone-ready folder in lamplighter-phone/
+powershell -File tools/build.ps1   # builds the phone-ready folder in docs/
 powershell -File tools/serve.ps1   # serves it at http://localhost:8765
 ```
 
-Real GPS only works over HTTPS, for example once `lamplighter-phone/` is deployed to a static host. Without GPS you can still play with simulated walking: tap the map to walk.
+Play it at https://flailingly.github.io/lit-path/ (GitHub Pages serves `docs/`). Real GPS only works over HTTPS, so use that link on a phone. Without GPS you can still play with simulated walking: tap the map to walk.
 
 ## How it was made
 
