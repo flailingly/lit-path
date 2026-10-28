@@ -10,6 +10,8 @@ A personal walking RPG over real San Francisco, built to make post-ACL/meniscus-
 - Never push walking intensity past physio limits. The game nudges; it never demands.
 - The repo is meant to be public (handle: flailingly). Never commit the owner's real name, personal email, home location, walk history or any keys. Personal places go in `private/`, which git ignores. Mentioning the knee surgery is fine.
 
+Code lives at https://github.com/flailingly/lit-path (public). Commit as flailingly with the GitHub no-reply email (already in local git config) and push to `origin main` after each change.
+
 ## Files
 
 - `lamplighter.html` — the whole game (page content, CSS and one script). Also published as a claude.ai artifact preview.
