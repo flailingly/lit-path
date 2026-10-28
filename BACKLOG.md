@@ -22,6 +22,9 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 - [ ] The 37 story landmarks were placed from memory and some may be off by a block. Snap each one to its OpenStreetMap position.
 - [ ] Map tiles need a network connection; dead zones show a blank map. Consider caching tiles for the home area.
 
+- [ ] Outside San Francisco the game has almost nothing to find: `places.json` only covers SF, and the random fallback places switch off once it loads. A friend elsewhere would get fog, territory and drifts, but no places. Fix: re-enable fallback places wherever no real places are nearby.
+- [ ] Untested on iPhone (Safari). Should work, but nobody has tried it.
+
 ## Content
 
 - [ ] Sync the landmark sheet into the game whenever the owner adds a batch: https://claude.ai/artifact/7cx9oVbZkZz15d2m1UHoBY
