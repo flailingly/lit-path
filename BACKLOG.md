@@ -36,7 +36,6 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 ## Asked for in walk reports
 
 - [ ] **More than one camp choice, tied to what you met on the walk.** Today Camp & Debrief offers one generic A/B pair. Owner wants a choice for each notable thing met on the way (a place visited, a drift, a person), using its name and kind. Suggested: up to 3 per debrief, built from per-kind templates (grove, mural, archive, Hearthkeeper, lookout, spring, echo, drift types, story landmarks). The template text goes to the content session.
-- [ ] **Map is too busy: drop house numbers, keep street names.** House numbers (for example "3471...3475") show because the map loads the most detailed tile level (zoom 17–18 of tile.openstreetmap.org), which is the only level that has them. Option A: cap tiles at zoom 16. House numbers disappear and street names stay, but the map gets chunkier and labels get smaller. Option B: switch to a cleaner tile style that leaves out house numbers (check the provider's terms first). Try A first, since it's one number to change.
 - [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said). Partly done: the Journal now lists past check-ins with Oriel's replies. Still open: some way to interact with her.
 
 ## From the owner's field guide prototype (2026-10-28)
@@ -77,3 +76,4 @@ The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City F
 - 2026-10-28: New look: leather and brass top bar and buttons, serif headings on sheets, pixel text kept for collection messages (STYLE.md updated).
 - 2026-10-28: Camp & Debrief: ending an outing lists the places, drifts and items found, territory claimed, then one either/or choice (+15 XP and a friendship or item). Walking through your own territory turns up 1 find per 8 hexes, at most 3 a day. Tested with simulated walking.
 - 2026-10-28: Screens reorganized so every control leads somewhere different. Bottom: Today (Maren's dispatch, drifts, errands, rest day), Journal (week strip, recent walks, Oriel check-in history, story, log), Set out, Satchel (items only), Guide (places, territory, people, Bestiary, lore). Top: level badge opens the Scout record (stats), the goal ring is a gauge only, and a gear opens Settings and saves.
+- 2026-10-28: Map is quieter: tiles capped at zoom 16, so house numbers are gone and street names stay (bigger and chunkier when zoomed in). Business and building labels mostly drop out too.

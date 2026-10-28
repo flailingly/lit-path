@@ -582,7 +582,23 @@ const CAMP=[
   [['Put your feet up','Oriel\'s standing advice: rest is part of the route.','bond:Oriel','Oriel passes the window and nods. "Good. Same again tomorrow, or less. Both count."'],
    ['Leave a note for Kip','The magpie collects before morning.','bond:Kip','By dark the note is gone. In its place is a brass washer, polished.']],
   [['Mark where the fog was thickest','The Guild tracks where Karl lingers.','xp','You shade three corners of the map. Tomorrow you\'ll know where the Fading is patient.'],
-   ['Tell a Hearthkeeper about your route','Café gossip travels faster than couriers.','item:snacks','The barista listens, then slides something across the counter. "For the next one."']]];
+   ['Tell a Hearthkeeper about your route','Café gossip travels faster than couriers.','item:snacks','The barista listens, then slides something across the counter. "For the next one."']],
+  [['Ice your knee','Oriel left a bag of frozen peas in the Guild freezer with your name on it.','bond:Oriel','Later the peas are soft and the knee is quieter. Oriel\'s label on the bag says "Scout. Reusable."'],
+   ['Read the Guild noticeboard','Somebody always pins up something odd.','xp','Between a lost-cat flyer and a ferry timetable is a card in Maren\'s handwriting: "Seen by Scouts this week: three thresholds, one heron, no Karl on Tuesday."']],
+  [['Check your boots for what came home','The city sticks to soles.','item:flora','Wedged in the tread is something green, still smelling of the park.'],
+   ['Make tea and call Maren','Dispatch is quiet this time of evening.','bond:Maren','"Karl lifted off two of your blocks today," Maren says. "I watched it on the board. Nice work."']],
+  [['Copy today\'s finds into the Folio','Val says a find isn\'t real until it\'s written down.','bond:Professor Val','You write slowly. When you look up, one of the entries has been underlined, in ink that isn\'t yours.'],
+   ['Empty your pockets for the magpie','Kip\'s magpie likes small, shiny, honest things.','bond:Kip','The magpie takes a bottle cap and leaves a folded Muni transfer, dated 1983.']],
+  [['Stretch the way Oriel showed you','Slowly, and only as far as is comfortable.','bond:Oriel','"That\'s it," Oriel says from the doorway. "Not further. Further is next month\'s problem."'],
+   ['Sit by the window and watch the fog','Karl usually comes in around now.','xp','The fog takes your street one lamp at a time. It skips the block you walked today.']],
+  [['Ask the café what\'s left from today','Hearthkeepers hate throwing bread away.','item:snacks','The baker wraps it in yesterday\'s paper and won\'t take money. "Scouts eat free after six."'],
+   ['Turn out the map case','Things collect in the corners.','item:knowledge','Under the folded maps is a page you don\'t remember adding, in handwriting a lot like yours.']],
+  [['Rinse the grit out of your satchel','Some of it is never just sand.','item:sea','Something at the bottom of the sink catches the light. You dry it off and keep it.'],
+   ['Hang your jacket by the door','It smells like fog and eucalyptus.','item:sky','A pocket you forgot you had holds something small and cold, like a hilltop on a windy day.']],
+  [['Leave the door open a crack','Bramble comes and goes on a private schedule.','bond:Bramble','Bramble comes in near midnight, smelling of somewhere that isn\'t on any map, and sleeps on your feet.'],
+   ['Look over today\'s route on the map','The line you walked is still faintly warm.','xp','You trace the route with a finger. Two streets you passed without noticing are a little clearer than they were this morning.']],
+  [['Write a postcard to Val','The archive keeps every postcard a Scout sends.','bond:Professor Val','Val\'s reply comes back by magpie: "Filed under Small Things, Well Observed."'],
+   ['Go to bed early','Tomorrow will still be there, and so will the fog.','xp','You sleep well. In the morning the Folio is open to a page you didn\'t leave it on.']]];
 function campPair(entry){return Math.floor(hash(entry.day,S.log.length,81)*CAMP.length)%CAMP.length}
 function campChoose(i,c){const e=S.log[0];if(!e||e.camp)return;const [,,rw,line]=CAMP[i][c];let extra='';
   if(rw.startsWith('bond:')){const n=rw.slice(5);S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1)}
@@ -819,9 +835,10 @@ function draw(t){ctx.setTransform(DPR,0,0,DPR,0,0);ctx.imageSmoothingEnabled=tru
   banner(px,py+34,'You','#ffd76a')}
 
 /* real street map under everything, drawn chunky: tiles one zoom level out, scaled up without smoothing */
+const TILE_MAX_Z=16; /* zoom 17+ tiles carry house numbers; 16 keeps street names without the clutter */
 const tiles=new Map();
 const t2lon=(x,n)=>x/n*360-180,t2lat=(y,n)=>Math.atan(Math.sinh(Math.PI-2*Math.PI*y/n))/RAD;
-function drawTiles(){const z=Math.max(11,Math.min(18,Math.round(Math.log2(156543.03*Math.cos(ORIGIN.lat*RAD)*scale))-1)),n=2**z;
+function drawTiles(){const z=Math.max(11,Math.min(TILE_MAX_Z,Math.round(Math.log2(156543.03*Math.cos(ORIGIN.lat*RAD)*scale))-1)),n=2**z;
   if(tiles.size>300)tiles.clear();
   const [la0,lo0]=w2ll(...s2w(0,0)),[la1,lo1]=w2ll(...s2w(W,H));
   const tx=lon=>Math.floor((lon+180)/360*n),ty=lat=>Math.floor((1-Math.log(Math.tan(lat*RAD)+1/Math.cos(lat*RAD))/Math.PI)/2*n);
