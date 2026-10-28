@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IM+Fell+English:ital@0;1&family=Pixelify+Sans:wght@400;600&display=swap">
 <style>
-/* Layout: a parchment field map (Marauder's-map style) fills the screen; the HUD is a strip of the Folio's cover, sheets are its pages */
+/* Layout: a parchment field map fills the screen; the HUD is a strip of the Folio's cover, sheets are its pages */
 :root{
   --bg:#e9dcbc; --fog:#cfba8e; --panel:#f6ecd4; --panel-2:#eadbb8; --line:#c8b083; --paper:#f6ecd4;
   --ink:#3b2a1a; --muted:#6f5a3e; --lantern:#8f5c12; --gold:#d9a43a; --seal:#a63d2f; --ember:#c0703a; --moss:#5f7d3c;
@@ -137,6 +137,27 @@ details p{margin-top:8px}
 .choice{box-shadow:3px 3px 0 var(--ink)}
 .sheet{border-radius:6px 6px 0 0;border-top:3px solid var(--ink)}
 .lvl{border-radius:4px}
+/* leather cover: the top bar and bottom buttons are the Folio's binding, trimmed in brass; sheets get serif headings */
+.hud{background:#2a170c;border-bottom:2px solid #c99a3e;padding-bottom:10px;color:#f5deb0}
+#title{color:#f5deb0}
+#xpText{color:#c99a3e}
+.hud .bar{background:#1a0e06;border:1px solid #5c3a24;border-radius:0}
+.hud .bar i{background:#d9a43a}
+.lvl{border:2px solid #c99a3e;box-shadow:2px 2px 0 rgba(0,0,0,.4)}
+.goal svg circle:first-child{fill:#1a0e06;stroke:#5c3a24}
+#goalArc{stroke:#d9a43a}
+.goal>span{color:#f5deb0}
+.goal small{color:#c99a3e}
+.stats{top:calc(env(safe-area-inset-top,0px) + 86px)}
+.dock{background:#2a170c;border-top:2px solid #c99a3e}
+.dock button{background:#452714;color:#f5deb0;border-color:#c99a3e;box-shadow:2px 2px 0 rgba(0,0,0,.45)}
+.dock .go{background:var(--seal);color:var(--paper);border-color:#c99a3e}
+.dock .go.on{background:var(--panel);color:var(--seal);border-color:#c99a3e}
+.toast{border-color:#c99a3e}
+.sheet{border-top:3px solid #c99a3e}
+.sheet h2{font:400 30px/1.1 var(--hand)}
+.sheet h3{font:400 20px/1.2 var(--hand);letter-spacing:0;text-transform:none;color:#5c3a24;margin:22px 0 8px}
+summary{font:400 19px var(--hand)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -690,7 +711,7 @@ function makeFogBrushes(){soft=document.createElement('canvas');soft.width=soft.
   noisePat=null;dirty=true}
 makeFogBrushes();
 cv.addEventListener('contextrestored',makeFogBrushes);
-function drawFog(t){const fw=fogC.width,fh=fogC.height,f=fctx;f.globalCompositeOperation='source-over';f.clearRect(0,0,fw,fh);
+function drawFog(t){const fw=fogC.width,fh=fogC.height,f=fctx;if(!fw||!fh){resize();return}f.globalCompositeOperation='source-over';f.clearRect(0,0,fw,fh);
   f.fillStyle='rgba(222,227,231,.93)';f.fillRect(0,0,fw,fh);
   noisePat=noisePat||f.createPattern(noise,'repeat');
   for(const [k,sp,al] of [[3,.006,.5],[5,-.004,.35]]){f.save();const ox=(-cam.x*scale/FP+(reduce?0:t*sp))/k,oy=(-cam.y*scale/FP)/k;f.scale(k,k);f.translate(ox%64,oy%64);f.globalAlpha=al;f.fillStyle=noisePat;f.fillRect(-64,-64,fw/k+128,fh/k+128);f.restore()}
