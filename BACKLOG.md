@@ -35,10 +35,9 @@ Priority order: **knee safety → bugs → things walk reports asked for → ide
 
 ## Asked for in walk reports
 
-- [ ] **Reorganize the screens (owner, 2026-10-28).** Three linked complaints: (1) Dispatch is mostly settings and save data, which doesn't belong in the main play area; move settings and saves behind a small gear at the top. (2) The groupings feel arbitrary: Satchel is bundled with Stats while Logbook is bundled with Bestiary. The field guide prototype grouped things more deliberately. (3) The level badge and goal ring at the top open the same sheets as the Satchel and Dispatch buttons (`lvlBtn` → `renderSatchel`, `goalBtn` → `renderPlan`). Every control should lead somewhere different. Proposed layout is waiting on the owner's decision.
 - [ ] **More than one camp choice, tied to what you met on the walk.** Today Camp & Debrief offers one generic A/B pair. Owner wants a choice for each notable thing met on the way (a place visited, a drift, a person), using its name and kind. Suggested: up to 3 per debrief, built from per-kind templates (grove, mural, archive, Hearthkeeper, lookout, spring, echo, drift types, story landmarks). The template text goes to the content session.
 - [ ] **Map is too busy: drop house numbers, keep street names.** House numbers (for example "3471...3475") show because the map loads the most detailed tile level (zoom 17–18 of tile.openstreetmap.org), which is the only level that has them. Option A: cap tiles at zoom 16. House numbers disappear and street names stay, but the map gets chunkier and labels get smaller. Option B: switch to a cleaner tile style that leaves out house numbers (check the provider's terms first). Try A first, since it's one number to change.
-- [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said).
+- [ ] **Oriel's check-ins feel one-way.** Owner likes the physio notes but wants to interact with them, or at least see a log of past check-ins (knee rating by day, what Oriel said). Partly done: the Journal now lists past check-ins with Oriel's replies. Still open: some way to interact with her.
 
 ## From the owner's field guide prototype (2026-10-28)
 
@@ -46,7 +45,6 @@ The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City F
 
 - [ ] **Named districts with "% surveyed"**: explore 50% of a named area to claim it, with no loop needed. Use real SF neighborhood boundaries (not drawn rectangles) so it works anywhere. Keep the hex loops as well.
 - [ ] **District dossiers and ledger**: tap a district to see its lore, elevation and progress; a list shows every district. Lore writing goes to the content session.
-- [ ] **Log a rest day** that keeps the streak, plus a 7-day table (distance, climb, territory, status) in the Logbook.
 - [ ] **Progress clocks on encounters**: small boxes that fill over several visits, so places and people build up over time.
 - Left out on purpose: a daily distance target that rises on its own (the game must not set rehab pace), items with fake medical effects (poultices, "+20% knee cushion"), step-rate targets, borrowed names ("Marauder's Map", "Hitchhiker's Guide"), test controls on the main screen, and switching to Leaflet and Tailwind.
 
@@ -78,3 +76,4 @@ The owner built a separate prototype, "The Wayfarer's Folio: An Enchanted City F
 - 2026-10-28: Drifts are collected automatically within 60 m, with a "+25 XP" toast, so there's no reason to double back for one (walk 1). The Investigate button still works for reading them.
 - 2026-10-28: New look: leather and brass top bar and buttons, serif headings on sheets, pixel text kept for collection messages (STYLE.md updated).
 - 2026-10-28: Camp & Debrief: ending an outing lists the places, drifts and items found, territory claimed, then one either/or choice (+15 XP and a friendship or item). Walking through your own territory turns up 1 find per 8 hexes, at most 3 a day. Tested with simulated walking.
+- 2026-10-28: Screens reorganized so every control leads somewhere different. Bottom: Today (Maren's dispatch, drifts, errands, rest day), Journal (week strip, recent walks, Oriel check-in history, story, log), Set out, Satchel (items only), Guide (places, territory, people, Bestiary, lore). Top: level badge opens the Scout record (stats), the goal ring is a gauge only, and a gear opens Settings and saves.

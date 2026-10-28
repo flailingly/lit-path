@@ -159,21 +159,27 @@ details p{margin-top:8px}
 .sheet h2{font:400 30px/1.1 var(--hand)}
 .sheet h3{font:400 20px/1.2 var(--hand);letter-spacing:0;text-transform:none;color:#5c3a24;margin:22px 0 8px}
 summary{font:400 19px var(--hand)}
+.gear{flex:none;width:36px;height:36px;display:grid;place-items:center;background:#452714;color:#f5deb0;border:1px solid #c99a3e;border-radius:3px;box-shadow:2px 2px 0 rgba(0,0,0,.45)}
+.dock{gap:6px}
+.dock button{font-size:13px;padding:0 2px}
+.dock .go{flex:1.7;font-size:13px;white-space:nowrap}
+#title{font-size:15px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
 <canvas id="map" aria-label="Map of the Vale. Tap to set where you walk."></canvas>
 
 <header class="hud">
-  <button class="lvl" id="lvlBtn" aria-label="Open hero sheet"><span id="lvlNum">1</span></button>
+  <button class="lvl" id="lvlBtn" aria-label="Open Scout record"><span id="lvlNum">1</span></button>
   <div class="xpwrap">
     <div class="xprow"><span id="title">Mender</span><span id="xpText" class="mono">0 / 150 XP</span></div>
     <div class="bar"><i id="xpBar"></i></div>
   </div>
-  <button class="goal" id="goalBtn" aria-label="Open today's plan">
+  <div class="goal" id="goalBtn" role="img" aria-label="Today's walking minutes against your goal">
     <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="#f6ecd4" stroke="#d8c49b" stroke-width="5"/><circle id="goalArc" cx="26" cy="26" r="21" fill="none" stroke="#8f5c12" stroke-width="5" stroke-linecap="round" stroke-dasharray="131.95" stroke-dashoffset="131.95"/></svg>
     <span><span><span id="goalText">0/12</span><small>min</small></span></span>
-  </button>
+  </div>
+  <button class="gear" data-tab="settings" aria-label="Settings and saves"><svg width="20" height="20" viewBox="0 0 10 10" shape-rendering="crispEdges" fill="currentColor"><path d="M4 0h2v2h-2zM4 8h2v2h-2zM0 4h2v2h-2zM8 4h2v2h-2zM1 1h2v2h-2zM7 1h2v2h-2zM1 7h2v2h-2zM7 7h2v2h-2zM2 2h6v6h-6z"/><rect x="4" y="4" width="2" height="2" fill="#2a170c"/></svg></button>
 </header>
 
 <div class="stats" id="stats" hidden>
@@ -196,10 +202,11 @@ summary{font:400 19px var(--hand)}
 <div class="interact" id="interact" hidden><button id="interactBtn">Visit</button></div>
 
 <nav class="dock">
-  <button data-tab="plan">Dispatch</button>
-  <button data-tab="journal">Logbook</button>
+  <button data-tab="today">Today</button>
+  <button data-tab="journal">Journal</button>
   <button class="go" id="goBtn">Set out</button>
-  <button data-tab="hero">Satchel</button>
+  <button data-tab="satchel">Satchel</button>
+  <button data-tab="guide" aria-label="Field Guide">Guide</button>
 </nav>
 
 <section class="sheet" id="sheet" hidden aria-modal="false">
@@ -565,7 +572,7 @@ function renderIntro(){return `<div class="eyebrow">The Wayfarer's Guild · Chap
   <p class="muted">The fog stays off a street for ${CLEAR_DAYS} days, then settles back over the next ${FADE_DAYS}. Territory you've claimed is yours for good, and while it's clear it gathers things for you each day. Each morning, three drifts appear somewhere near home, sized to today's walk.</p>
   <h3>Where is home?</h3>
   <div class="row"><button class="btn solid" data-act="begin" data-mode="gps">Use my location as home</button><button class="btn" data-act="begin" data-mode="sim">Try it with simulated walking</button></div>
-  <p class="note">"Use my location" sets home where you're standing and tracks your real walks. Simulated walking starts you in the Mission: tap the map to walk at ${S.simSpeed}× speed. You can move home later in Dispatch.</p>`}
+  <p class="note">"Use my location" sets home where you're standing and tracks your real walks. Simulated walking starts you in the Mission: tap the map to walk at ${S.simSpeed}× speed. You can move home later in Settings (the gear at the top).</p>`}
 
 /* Camp & Debrief: one small either/or after every outing. [label, hint, reward, result]; reward is bond:Name, item, item:cat or xp */
 const CAMP=[
@@ -594,50 +601,68 @@ function renderSummary(o,entry){const br=Object.entries(o.br).sort((a,b)=>b[1]-a
   <div class="field"><label for="painIn">Pain or discomfort: <b class="mono" id="painVal">2</b> / 10</label><input id="painIn" type="range" min="0" max="10" value="2"><div class="pain"><span>none</span><span>moderate</span><span>severe</span></div></div>
   <button class="btn solid" data-act="pain">Save check-in</button>`:`<div class="npc"><b>Oriel, the Guild's physio</b><p>${orielLine(entry.pain)}</p></div>`}</div>`}
 
-function renderLogbook(){const L=level(),chs=CHAPTERS.filter(c=>L>=c.lvl).reverse(),next=CHAPTERS.find(c=>c.lvl>L),seen=CRITTERS.filter(c=>S.bestiary[c[0]]).length;ensureDrifts();
-  return `<div class="eyebrow">The Scout's Folio</div><h2>Logbook &amp; Bestiary</h2>
-  <h3>Today's drifts</h3><div class="lines">${S.drifts.map(dr=>`<div><span>${dr.name}</span><span>${dr.done?'followed':Math.round(Math.hypot(dr.x-S.player.x,dr.y-S.player.y))+' m away'}</span></div>`).join('')}</div>
+/* each control opens one sheet: Today (what to do), Journal (what you did), Satchel (what you carry), Field Guide (what you've collected),
+   the level badge opens the Scout record, the gear opens Settings */
+function streak(){let d=dayIndex(),n=0;const ok=r=>r&&(r.min>=3||r.rest);if(!ok(S.days[d]))d--;while(ok(S.days[d])){n++;d--}return n}
+function dateLabel(d){const t=new Date(d*DAY+12*3600e3);return t.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}
+function renderToday(){const td=today(),g=goalMin(),di=dayIndex();ensureDrifts();
+  const canRest=!td.rest&&td.min<3&&!S.outing,o=dispatch(),ov=Math.min(o.target,td[o.f]||0),st=streak();
+  return `<div class="eyebrow">${dateLabel(di)}</div><h2>Today: ${Math.round(td.min)} of ${g} min</h2>
+  <p class="muted">Streak: <b class="mono">${st}</b> day${st===1?'':'s'}. Walks and rest days both count.</p>
+  <h3>From Maren</h3>
+  <div class="card qcard">${clock(ov/o.target,4)}<div class="top"><b>${o.label}</b><span class="xp">+${o.reward} XP</span></div><div class="from">Today's dispatch</div><div class="from mono">${td.dispatch?'Done for today':`${ov} / ${o.target}`}</div></div>
+  <h3>Today's drifts</h3><div class="lines">${S.drifts.map(dr=>`<div><span>${dr.name}</span><span>${dr.done?'collected':Math.round(Math.hypot(dr.x-S.player.x,dr.y-S.player.y))+' m away'}</span></div>`).join('')}</div>
   <h3>Errands · ${S.quests.length}/4</h3>${S.quests.length?S.quests.map(questHTML).join(''):'<p class="muted">No errands yet. Check the Guild board at home, or ask a Hearthkeeper.</p>'}
-  <h3>Logbook</h3>${S.logbook.length?`<div class="lines">${S.logbook.slice(0,14).map(e=>`<div><span>${e.t}</span><span>${dateLabel(e.d).split(',')[0]}</span></div>`).join('')}</div>`:'<p class="muted">Your walks will be written here.</p>'}
-  <h3>Bestiary · ${seen}/${CRITTERS.length}</h3><div class="dex">${CRITTERS.map(([n,b])=>S.bestiary[n]?`<div><b>${n}</b>${b}<br><span class="muted">Seen ${S.bestiary[n]}×</span></div>`:'<div class="unk"><b>???</b>Not seen yet</div>').join('')}</div>
+  <h3>Resting today?</h3>
+  <p class="muted">A rest day keeps your streak, same as a walk.</p>
+  <div class="row"><button class="btn" data-act="rest" ${canRest?'':'disabled'}>${td.rest?'Resting today':'Take a rest day (+20 XP)'}</button></div>`}
+
+function renderJournal(){const L=level(),chs=CHAPTERS.filter(c=>L>=c.lvl).reverse(),next=CHAPTERS.find(c=>c.lvl>L),di=dayIndex();let wk='';
+  for(let i=6;i>=0;i--){const d=di-i,r=S.days[d],c=r&&r.min>=3?'walk':r&&r.rest?'rest':'',lab=new Date(d*DAY+12*3600e3).toLocaleDateString(undefined,{weekday:'narrow'});
+    wk+=`<div class="${i===0?'today':''}"><i class="${c}">${r&&r.min>=1?Math.round(r.min):r&&r.rest?'rest':''}</i>${lab}</div>`}
+  const walks=S.log.slice(0,10),checks=S.log.filter(e=>e.pain!=null).slice(0,8);
+  return `<div class="eyebrow">The Scout's Folio</div><h2>Journal</h2>
+  <h3>This week</h3><div class="week">${wk}</div>
+  <h3>Recent walks</h3>${walks.length?`<div class="lines">${walks.map(e=>`<div><span>${dateLabel(e.day).split(',')[0]}: ${(e.m/1000).toFixed(2)} km, ${Math.round(e.min)} min</span><span>${e.cells} new hexes</span></div>`).join('')}</div>`:'<p class="muted">Your walks will be written here.</p>'}
+  <h3>Check-ins with Oriel</h3>${checks.length?checks.map(e=>`<div class="npc"><b>${dateLabel(e.day).split(',')[0]} · knee ${e.pain}/10</b><p>${orielLine(e.pain)}</p></div>`).join(''):'<p class="muted">After each walk, Camp &amp; Debrief asks how the knee feels. Your answers and Oriel\'s replies collect here.</p>'}
   <h3>The story so far</h3>${chs.map((c,i)=>`<details ${i===0?'open':''}><summary>${c.t}</summary><p>${c.p}</p></details>`).join('')}
   ${next?`<p class="muted" style="margin-top:8px">Next chapter at level ${next.lvl}.</p>`:''}
+  <h3>Log</h3>${S.logbook.length?`<div class="lines">${S.logbook.slice(0,14).map(e=>`<div><span>${e.t}</span><span>${dateLabel(e.d).split(',')[0]}</span></div>`).join('')}</div>`:'<p class="muted">Things you do will be noted here.</p>'}`}
+
+function renderSatchel(){const owned=Object.keys(S.owned),tended=owned.filter(k=>clarity(S.cells[k])>=.5).length;
+  const bag=Object.keys(CATS).map(k=>{const items=CATS[k].items.filter(i=>S.satchel[i]);return items.length?`<div class="lines">${items.map(i=>`<div><span><span class="dot" style="background:${CATS[k].color}"></span>${i}</span><span>×${S.satchel[i]}</span></div>`).join('')}</div>`:''}).join('');
+  return `<div class="eyebrow">What you're carrying</div><h2>Satchel</h2>
+  ${bag||'<p class="muted">Empty for now. Parks give flora, Hearthkeepers give provisions, archives give knowledge, the shore gives sea finds, hilltops give sky finds, murals give pigment.</p>'}
+  <p class="note">Your territory gathers for you: ${tended} of your ${owned.length} hexes are clear enough to turn up about ${tended?Math.min(6,Math.ceil(tended/15)):0} finds a day, and walking through them turns up a few more.</p>`}
+
+function renderGuide(){const seen=CRITTERS.filter(c=>S.bestiary[c[0]]).length,friends=Object.entries(S.bonds).sort((a,b)=>b[1]-a[1]),lmFound=LANDMARKS.filter(l=>S.discovered[l.id]).length,owned=Object.keys(S.owned).length;
+  return `<div class="eyebrow">What you've collected</div><h2>Field Guide</h2>
+  <h3>Places</h3><div class="big"><div><b>${lmFound}/${LANDMARKS.length}</b><span>story landmarks found</span></div><div><b>${Object.keys(S.discovered).length}</b><span>places found in all</span></div></div>
+  <h3>Territory</h3><div class="big"><div><b>${owned}</b><span>hexes yours</span></div><div><b>${S.tot.cells}</b><span>hexes ever mapped</span></div></div>
+  <h3>People</h3>${friends.length?`<div class="lines">${friends.map(([n,v])=>`<div><span>${n}</span><span class="hearts">${hearts(v)}</span></div>`).join('')}</div>`:'<p class="muted">Sit with someone somewhere to get to know them.</p>'}
+  <h3>Bestiary · ${seen}/${CRITTERS.length}</h3><div class="dex">${CRITTERS.map(([n,b])=>S.bestiary[n]?`<div><b>${n}</b>${b}<br><span class="muted">Seen ${S.bestiary[n]}×</span></div>`:'<div class="unk"><b>???</b>Not seen yet</div>').join('')}</div>
   <h3>Things you've learned · ${S.learned.length}</h3>${S.learned.length?S.learned.slice().reverse().map(l=>`<p class="lore">${l}</p>`).join(''):'<p class="muted">Choose "Ask about this place" somewhere to start.</p>'}`}
 
-function renderSatchel(){const L=level(),b=xpFor(L+1);let held=0;for(const k in S.cells)if(clarity(S.cells[k])>=.5)held++;
+function renderRecord(){const L=level(),b=xpFor(L+1);
   const at=(n,v,u,fmt)=>{const r=rank(v,u),nx=u*r*r;return `<div class="attr"><b>${n}</b><span class="r">${r}</span><div class="bar"><i style="width:${Math.min(100,(v-u*(r-1)*(r-1))/(nx-u*(r-1)*(r-1))*100)}%"></i></div><small>${fmt(v)} · next rank at ${fmt(nx)}</small></div>`};
-  const friends=Object.entries(S.bonds).sort((a,b)=>b[1]-a[1]),lmFound=LANDMARKS.filter(l=>S.discovered[l.id]).length,owned=Object.keys(S.owned),tended=owned.filter(k=>clarity(S.cells[k])>=.5).length;
-  const bag=Object.keys(CATS).map(k=>{const items=CATS[k].items.filter(i=>S.satchel[i]);return items.length?`<div class="lines">${items.map(i=>`<div><span><span class="dot" style="background:${CATS[k].color}"></span>${i}</span><span>×${S.satchel[i]}</span></div>`).join('')}</div>`:''}).join('');
-  return `<div class="eyebrow">Level ${L} · ${Math.floor(S.xp)} XP · ${b-Math.floor(S.xp)} to level ${L+1}</div><h2>Satchel &amp; Stats</h2><p class="muted">${titleFor(L)}, Wayfarer's Guild</p>
-  <h3>Territory</h3><div class="big"><div><b>${owned.length}</b><span>hexes yours</span></div><div><b>${tended}</b><span>clear enough to gather (about ${tended?Math.min(6,Math.ceil(tended/15)):0} finds a day)</span></div></div>
+  return `<div class="eyebrow">Level ${L} · ${Math.floor(S.xp)} XP · ${b-Math.floor(S.xp)} to level ${L+1}</div><h2>Scout record</h2><p class="muted">${titleFor(L)}, Wayfarer's Guild</p>
   <h3>Stats</h3>
   ${at('Stride',S.tot.m/1000,.5,v=>v.toFixed(1)+' km')}
   ${at('Stamina',S.tot.min,20,v=>Math.round(v)+' min')}
   ${at('Ascent',S.tot.gain,25,v=>Math.round(v)+' m')}
   ${at('Cartography',S.tot.cells,40,v=>Math.round(v)+' hexes')}
   ${at('Lore',S.learned.length,1,v=>v+' learned')}
-  <div class="big"><div><b>${lmFound}/${LANDMARKS.length}</b><span>story landmarks found</span></div><div><b>${Object.keys(S.discovered).length}</b><span>places found in all</span></div></div>
-  <h3>People</h3>${friends.length?`<div class="lines">${friends.map(([n,v])=>`<div><span>${n}</span><span class="hearts">${hearts(v)}</span></div>`).join('')}</div>`:'<p class="muted">Sit with someone somewhere to get to know them.</p>'}
-  <h3>Satchel</h3>${bag||'<p class="muted">Empty for now. Parks give flora, Hearthkeepers give provisions, archives give knowledge, the shore gives sea finds, hilltops give sky finds, murals give pigment.</p>'}`}
+  <h3>All time</h3><div class="big"><div><b>${(S.tot.m/1000).toFixed(1)}</b><span>kilometres walked</span></div><div><b>${Math.round(S.tot.min)}</b><span>minutes on foot</span></div></div>`}
 
-function streak(){let d=dayIndex(),n=0;const ok=r=>r&&(r.min>=3||r.rest);if(!ok(S.days[d]))d--;while(ok(S.days[d])){n++;d--}return n}
-function dateLabel(d){const t=new Date(d*DAY+12*3600e3);return t.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}
-function renderPlan(){const td=today(),g=goalMin(),di=dayIndex();let wk='';
-  for(let i=6;i>=0;i--){const d=di-i,r=S.days[d],c=r&&r.min>=3?'walk':r&&r.rest?'rest':'',lab=new Date(d*DAY+12*3600e3).toLocaleDateString(undefined,{weekday:'narrow'});
-    wk+=`<div class="${i===0?'today':''}"><i class="${c}">${r&&r.min>=1?Math.round(r.min):r&&r.rest?'rest':''}</i>${lab}</div>`}
-  const canRest=!td.rest&&td.min<3&&!S.outing,o=dispatch(),ov=Math.min(o.target,td[o.f]||0);
-  return `<div class="eyebrow">Dispatch · ${dateLabel(di)}</div><h2>Today: ${Math.round(td.min)} of ${g} min</h2>
-  <p class="muted">Streak: <b class="mono">${streak()}</b> day${streak()===1?'':'s'}. Walks and rest days both count.</p>
-  <div class="card qcard">${clock(ov/o.target,4)}<div class="top"><b>${o.label}</b><span class="xp">+${o.reward} XP</span></div><div class="from">Today's dispatch from Maren</div><div class="from mono">${td.dispatch?'Done for today':`${ov} / ${o.target}`}</div></div>
-  <div class="week">${wk}</div>
-  <div class="row"><button class="btn" data-act="rest" ${canRest?'':'disabled'}>${td.rest?'Resting today':'Take a rest day (+20 XP)'}</button></div>
-  <p class="note">Your daily goal grows by ${S.plan.ramp}% each week you walk at least twice and every knee check-in stays under 5. A sore week holds the goal where it is. This is a nudge, not medical advice: your surgeon's and physio's limits come first.</p>
+function renderSettings(){return `<div class="eyebrow">Settings</div><h2>Settings and saves</h2>
   <h3>Home</h3>
   <p class="muted">Drifts appear around home each day, and home is where Bramble waits.</p>
   <div class="row"><button class="btn" data-act="homehere">${S.mode==='gps'?'Make where I\'m standing my home':'Make this spot my home'}</button></div>
-  <h3>Settings</h3>
+  <h3>Daily goal</h3>
   <div class="field"><label for="baseIn">Starting daily goal (minutes)</label><input id="baseIn" type="number" min="3" max="120" value="${S.plan.baseMin}"></div>
   <div class="field"><label for="rampIn">Weekly increase (%)</label><input id="rampIn" type="number" min="0" max="25" value="${S.plan.ramp}"></div>
+  <p class="note">Your daily goal grows by ${S.plan.ramp}% each week you walk at least twice and every knee check-in stays under 5. A sore week holds the goal where it is. This is a nudge, not medical advice: your surgeon's and physio's limits come first.</p>
+  <h3>Movement and sound</h3>
   <div class="field"><label for="modeIn">Movement</label><select id="modeIn" ${S.outing?'disabled':''}><option value="sim" ${S.mode==='sim'?'selected':''}>Simulated (tap the map)</option><option value="gps" ${S.mode==='gps'?'selected':''}>My location (GPS)</option></select></div>
   <div class="field"><label for="speedIn">Simulated walking speed</label><select id="speedIn">${[1,4,8,20].map(s=>`<option value="${s}" ${S.simSpeed===s?'selected':''}>${s}× ${s===1?'(real pace)':''}</option>`).join('')}</select></div>
   <div class="field"><label><input id="soundIn" type="checkbox" ${S.sound!==false?'checked':''}> Chimes and buzzes when something happens</label></div>
@@ -649,6 +674,7 @@ function renderPlan(){const td=today(),g=goalMin(),di=dayIndex();let wk='';
   <p class="muted">Skip ahead to see the fog settle back in, and territory gather. Day ${Math.round(S.timeOffset/DAY)} of skipped time.</p>
   <div class="row"><button class="btn" data-act="skip" data-n="1">Pass 1 day</button><button class="btn" data-act="skip" data-n="5">Pass 5 days</button></div>
   <h3>Start over</h3><div class="row"><button class="btn" data-act="reset" id="resetBtn">Erase all progress</button></div>`}
+const SHEETS={today:renderToday,journal:renderJournal,satchel:renderSatchel,guide:renderGuide,record:renderRecord,settings:renderSettings};
 
 /* ---------- UI ---------- */
 function toast(html){const t=document.createElement('div');t.className='toast';t.innerHTML=html;const box=$('toasts');box.appendChild(t);while(box.children.length>3)box.firstChild.remove();setTimeout(()=>t.remove(),3400)}
@@ -662,7 +688,7 @@ function ui(){const L=level(),a=xpFor(L),b=xpFor(L+1);$('lvlNum').textContent=L;
   $('attrib').hidden=!tilesOk}
 
 document.addEventListener('click',e=>{const el=e.target.closest('[data-act],[data-tab]');if(!el)return;const act=el.dataset.act,tab=el.dataset.tab;
-  if(tab){openSheet(tab==='journal'?renderLogbook:tab==='hero'?renderSatchel:renderPlan);return}
+  if(tab){if(SHEETS[tab])openSheet(SHEETS[tab]);return}
   if(act==='close')return closeSheet();
   if(act==='begin'){S.intro=false;S.mode=el.dataset.mode;closeSheet();startOuting();return}
   if(act==='homehere'){homeHere();closeSheet();return}
@@ -692,7 +718,7 @@ document.addEventListener('change',e=>{const id=e.target.id,v=e.target.value;
   else if(id==='soundIn'){S.sound=e.target.checked;if(S.sound)chime('find')}
   else return;save();ui()});
 $('goBtn').onclick=()=>{S.outing?endOuting():startOuting()};
-$('lvlBtn').onclick=()=>openSheet(renderSatchel);$('goalBtn').onclick=()=>openSheet(renderPlan);
+$('lvlBtn').onclick=()=>openSheet(renderRecord);
 $('interactBtn').onclick=()=>{if(nearPOI)visit(nearPOI)};
 
 /* ---------- map ---------- */
