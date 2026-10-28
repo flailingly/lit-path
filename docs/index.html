@@ -159,6 +159,7 @@ details p{margin-top:8px}
 .sheet h2{font:400 30px/1.1 var(--hand)}
 .sheet h3{font:400 20px/1.2 var(--hand);letter-spacing:0;text-transform:none;color:#5c3a24;margin:22px 0 8px}
 summary{font:400 19px var(--hand)}
+.lines .itemnote{font:italic 14px/1.35 var(--hand);color:var(--muted);margin:2px 0 6px 16px}
 .gear{flex:none;width:36px;height:36px;display:grid;place-items:center;background:#452714;color:#f5deb0;border:1px solid #c99a3e;border-radius:3px;box-shadow:2px 2px 0 rgba(0,0,0,.45)}
 .dock{gap:6px}
 .dock button{font-size:13px;padding:0 2px}
@@ -411,7 +412,11 @@ syncPlan();
 /* what this outing turned up, for the Camp & Debrief sheet */
 function gotItem(item,o=S.outing){S.satchel[item]=(S.satchel[item]||0)+1;if(o){o.got=o.got||{};o.got[item]=(o.got[item]||0)+1}}
 function noteFind(s){const o=S.outing;if(o)(o.finds=o.finds||[]).push(s)}
-function catOfItem(item){return Object.keys(CATS).find(k=>CATS[k].items.includes(item))||'flora'}
+function catOfItem(item){const kp=Object.values(KEEPERS).find(k=>k.item===item);return kp?kp.cat:Object.keys(CATS).find(k=>CATS[k].items.includes(item))||'flora'}
+/* one-line descriptions shown in the Satchel; keeper signature items use their keeper's note */
+const ITEM_NOTES={};
+function itemNote(item){const kp=Object.values(KEEPERS).find(k=>k.item===item);return ITEM_NOTES[item]||(kp&&kp.note)||''}
+function itemsOfCat(cat){return CATS[cat].items.concat(Object.values(KEEPERS).filter(k=>k.cat===cat).map(k=>k.item))}
 function addXP(n,label){const b=level();S.xp+=n;const o=S.outing;if(o){o.xp+=n;o.br[label]=(o.br[label]||0)+n}
   const a=level();if(a>b){toast(`Level <em>${a}</em> · ${titleFor(a)}`);chime('level');addLog(`Reached level ${a}: ${titleFor(a)}`);const ch=CHAPTERS.find(c=>c.lvl===a);if(ch)toast(`New chapter: ${ch.t}`)}}
 function quest(type,n){for(const q of S.quests.slice()){if(q.type!==type)continue;q.prog=Math.min(q.target,q.prog+n);
@@ -454,7 +459,14 @@ function dailyYield(){const d=dayIndex();if(S.yieldDay==null){S.yieldDay=d;retur
 function ensureDrifts(){const d=dayIndex();if(S.driftDay===d)return;S.driftDay=d;S.drifts=[];
   const maxR=Math.min(900,Math.max(160,goalMin()*35)),types=Object.keys(DRIFTS);
   for(let i=0;i<3;i++){const a=hash(d,i,61)*Math.PI*2,dist=maxR*(.4+.6*hash(d,i,62)),t=types[Math.floor(hash(d,i,63)*types.length)%types.length];
-    S.drifts.push({id:`drift:${d}:${i}`,kind:'drift',dtype:t,name:DRIFTS[t].name,x:S.hearth.x+Math.cos(a)*dist,y:S.hearth.y+Math.sin(a)*dist,done:0})}}
+    const dr={id:`drift:${d}:${i}`,kind:'drift',dtype:t,name:DRIFTS[t].name,x:S.hearth.x+Math.cos(a)*dist,y:S.hearth.y+Math.sin(a)*dist,done:0};
+    if(t==='wanderer')dr.keeper=roamingKeeper(dr,d);S.drifts.push(dr)}}
+/* a Hearthkeeper you know (2+ hearts) can be the day's Familiar Face, away from their own shop, at most every other day */
+function roamingKeeper(dr,d){S.roam=S.roam||{};
+  for(const [n,k] of Object.entries(KEEPERS)){const home=LANDMARKS.find(l=>l.id===k.home),last=S.roam[n]?S.roam[n].day:-9;
+    if((S.bonds[n]||0)<2||!home||d-last<2||Math.hypot(home.x-dr.x,home.y-dr.y)<300)continue;
+    S.roam[n]={day:d,line:S.roam[n]?S.roam[n].line:0};return n}
+  return null}
 
 /* ---------- real places from OpenStreetMap, shipped with the game as places.json ---------- */
 function buildOSM(list){OSMP=[];for(const [k,n,la,lo] of list){const [x,y]=ll2w(la,lo);if(LANDMARKS.some(l=>Math.hypot(l.x-x,l.y-y)<80))continue;OSMP.push({id:'p'+strHash(k+n+la+lo),kind:k,name:n,osm:1,x,y})}
@@ -539,7 +551,8 @@ function choicesHTML(p){const v=S.visits[p.id],d=dayIndex(),[who]=resident(p),ca
   opts.push(['befriend',`Sit with ${who}`,`Friendship <span class="hearts">${hearts(S.bonds[bondKey(p)]||0)}</span> +1. +10 XP`]);
   return `<h3>Choose one for today</h3><div class="choices">${opts.map(([c,t,s])=>`<button class="choice" data-act="choose" data-id="${p.id}" data-c="${c}"><b>${t}</b><span>${s}</span></button>`).join('')}</div>`}
 function choose(p,c){const v=S.visits[p.id],d=dayIndex();if(!v||v.used===d)return;const [who]=resident(p),key=bondKey(p);let res='';
-  if(c==='forage'){const cat=catOf(p),item=pick(CATS[cat].items,hash(strHash(p.id),d,31));gotItem(item);addXP(12,'Gathering');
+  if(c==='forage'){const kp=p.kind==='landmark'&&KEEPERS[p.who]&&KEEPERS[p.who].home===p.id?KEEPERS[p.who]:null,
+      cat=kp?kp.cat:catOf(p),item=kp&&hash(strHash(p.id),d,32)<1/3?kp.item:pick(CATS[cat].items,hash(strHash(p.id),d,31));gotItem(item);addXP(12,'Gathering');
     res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>You took <b>${item}</b>. It's in your satchel.</p>`;addLog(`Gathered ${item} at ${label(p)}`)}
   else if(c==='learn'){const i=v.li||0,pool=p.lore||KIND_LORE[p.kind]||[];let line;if(i<pool.length)line=pool[i];else{line=LORE[S.loreIdx%LORE.length];S.loreIdx++}v.li=i+1;
     if(!S.learned.includes(line))S.learned.push(line);addXP(15,'Learning');res=`<p class="lore">${line}</p>`;addLog(`Learned something at ${label(p)}`)}
@@ -550,6 +563,9 @@ function resolveDrift(p){if(p.done)return;const [a,b]=[strHash(p.id),3];let res=
   if(p.dtype==='shimmer'){const line=LORE[S.loreIdx%LORE.length];S.loreIdx++;if(!S.learned.includes(line))S.learned.push(line);res=`<p>The street goes quiet for a moment, and you understand something.</p><p class="lore">${line}</p>`}
   else if(p.dtype==='courier'){const cat=pick(Object.keys(CATS),hash(a,b,5)),item=pick(CATS[cat].items,hash(a,b,6));gotItem(item);S.bonds.Kip=Math.min(5,(S.bonds.Kip||0)+1);res=`<p><span class="dot" style="background:${CATS[cat].color}"></span>Inside: <b>${item}</b>, and a note in Kip's handwriting: "For the Scout. Don't ask."</p>`}
   else if(p.dtype==='familiar'){const n=seeCritter(a,b,true);res=`<p>A <b>${n}</b> lets you look at it for a long moment before it goes. It's in your Bestiary.</p>`}
+  else if(p.keeper&&KEEPERS[p.keeper]){const n=p.keeper,k=KEEPERS[n],home=LANDMARKS.find(l=>l.id===k.home),r=S.roam[n],line=k.roam[r.line%k.roam.length];r.line++;
+    S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1);const gift=hash(a,b,8)<.5;if(gift)gotItem(k.item);
+    res=`<div class="npc"><b>${n}, ${home?home.role:'a Hearthkeeper'}</b><p>${line}</p></div>${gift?`<p><span class="dot" style="background:${CATS[k.cat].color}"></span><b>${k.item}</b> goes in your satchel.</p>`:''}`}
   else{const [n,role,line]=pick(CAST,hash(a,b,7));S.bonds[n]=Math.min(5,(S.bonds[n]||0)+1);res=`<div class="npc"><b>${n}, ${role}</b><p>${line}</p></div>`}
   p.done=1;p.result=res;noteFind(p.name);addXP(25,'Drifts');addLog(`Followed a drift: ${p.name}`);chime('find');save();refreshSheet();ui()}
 function renderPOI(p,fresh){const d=dayIndex(),[who,role]=resident(p),bond=S.bonds[bondKey(p)]||0,first=fresh&&p.kind!=='hearth'?` · first visit +${p.kind==='landmark'?25:10} XP`:'';
@@ -656,7 +672,7 @@ function renderJournal(){const L=level(),chs=CHAPTERS.filter(c=>L>=c.lvl).revers
   <h3>Log</h3>${S.logbook.length?`<div class="lines">${S.logbook.slice(0,14).map(e=>`<div><span>${e.t}</span><span>${dateLabel(e.d).split(',')[0]}</span></div>`).join('')}</div>`:'<p class="muted">Things you do will be noted here.</p>'}`}
 
 function renderSatchel(){const owned=Object.keys(S.owned),tended=owned.filter(k=>clarity(S.cells[k])>=.5).length;
-  const bag=Object.keys(CATS).map(k=>{const items=CATS[k].items.filter(i=>S.satchel[i]);return items.length?`<div class="lines">${items.map(i=>`<div><span><span class="dot" style="background:${CATS[k].color}"></span>${i}</span><span>×${S.satchel[i]}</span></div>`).join('')}</div>`:''}).join('');
+  const bag=Object.keys(CATS).map(k=>{const items=itemsOfCat(k).filter(i=>S.satchel[i]);return items.length?`<div class="lines">${items.map(i=>`<div><span><span class="dot" style="background:${CATS[k].color}"></span>${i}</span><span>×${S.satchel[i]}</span></div>${itemNote(i)?`<p class="itemnote">${itemNote(i)}</p>`:''}`).join('')}</div>`:''}).join('');
   return `<div class="eyebrow">What you're carrying</div><h2>Satchel</h2>
   ${bag||'<p class="muted">Empty for now. Parks give flora, Hearthkeepers give provisions, archives give knowledge, the shore gives sea finds, hilltops give sky finds, murals give pigment.</p>'}
   <p class="note">Your territory gathers for you: ${tended} of your ${owned.length} hexes are clear enough to turn up about ${tended?Math.min(6,Math.ceil(tended/15)):0} finds a day, and walking through them turns up a few more.</p>`}
